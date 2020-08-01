@@ -103,7 +103,34 @@ def EI_hv(mu_norm, nd_front_norm, reference_point_norm):
                 ei.append(hv_value)
     ei = np.atleast_2d(ei).reshape(n, -1)
     return ei
+def EI_hv_contribution(mu_norm, nd_front_norm, reference_point_norm):
 
+    # comply with pg settings
+    reference_point_norm = reference_point_norm.ravel()
+    n = mu_norm.shape[0]
+    ei = []
+    n_var = mu_norm.shape[1]
+    for i in range(n):
+
+        if np.any(np.atleast_2d(mu_norm[i, :]).reshape(-1, n_var) >
+                  np.atleast_2d(reference_point_norm).reshape(-1, n_var),
+                  axis=1):
+            ei.append(0)
+        else:
+            if np.sum(np.isnan(mu_norm[i, :])) > 0:  # nan check
+                ei.append(0)
+            else:
+                point_list = np.vstack((nd_front_norm, mu_norm[i, :]))
+                hv = pg.hypervolume(point_list)
+                hv_value = hv.compute(reference_point_norm)
+
+                hv_nd = pg.hypervolume(nd_front_norm)
+                hv_value_nd = hv_nd.compute(reference_point_norm)
+                contribution = hv_value - hv_value_nd
+
+                ei.append(contribution)
+    ei = np.atleast_2d(ei).reshape(n, -1)
+    return ei
 
 def HVR(ideal, nadir, nd_front, mu, n_obj):
 
@@ -364,7 +391,8 @@ def acqusition_function(x,
                         feasible,
                         nadir,
                         ideal,
-                        ei_method
+                        ei_method,
+                        problem_name
                         ):
 
     # redundent jump from before

@@ -3,8 +3,11 @@ from create_child import create_child, create_child_c
 from sort_population import sort_population
 import time
 from scipy.optimize import differential_evolution
-
-
+import pygmo as pg
+import matplotlib.pyplot as plt
+import pyDOE
+from EI_krg import normalization_with_nd, EI_hv, EI_hv_contribution
+from sklearn.utils.validation import check_array
 def optimizer(problem, nobj, ncon, bounds, recordFlag, pop_test, mut, crossp, popsize, its,  **kwargs):
 
     record_f = list()
@@ -18,7 +21,7 @@ def optimizer(problem, nobj, ncon, bounds, recordFlag, pop_test, mut, crossp, po
     a = np.linspace(0, 2 * popsize - 1, 2 * popsize, dtype=int)
 
     if len(kwargs) != 0:
-        print(kwargs['add_info'])
+        # print(kwargs['add_info'])
         guide_x = kwargs['add_info']
 
     all_cv = np.zeros((2 * popsize, 1))
@@ -125,13 +128,64 @@ def optimizer(problem, nobj, ncon, bounds, recordFlag, pop_test, mut, crossp, po
 
     return pop_x, pop_f, pop_g, archive_x, archive_f, archive_g, (record_f, record_x)
 
+def plot_infill_landscape(train_x, train_y, norm_train_y, krg, krg_g, nadir, ideal, feasible, ei_method, problem_name):
+    ndf, dl, dc, ndr = pg.fast_non_dominated_sorting(train_y)
+    ndf = list(ndf)
 
-def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, itermax, flag, **kwargs):
+    # extract nd for normalization
+    if len(ndf[0]) > 1:
+        ndf_extend = ndf[0]
+    else:
+        ndf_extend = np.append(ndf[0], ndf[1])
+
+    nd_front = train_y[ndf_extend, :]
+
+    plt.ion()
+    plt.clf()
+    min_by_feature = np.min(train_y)
+    max_by_feature = np.max(train_y)
+    n_vals = train_y.shape[1]
+    number_of_initial_samples = 10000
+
+    generated_samples = pyDOE.lhs(n_vals, number_of_initial_samples)
+    generated_samples = min_by_feature + (max_by_feature - min_by_feature) * generated_samples
+
+    norm_mu, norm_nd, point_reference = normalization_with_nd(generated_samples, train_y)
+    ei = EI_hv_contribution(norm_mu, norm_nd, point_reference)
+    cm1 = plt.cm.get_cmap('RdYlBu')
+    ei = ei.ravel()
+    plt.scatter(generated_samples[:, 0].ravel(), generated_samples[:, 1].ravel(), c=ei, cmap=cm1)
+    plt.scatter(nd_front[:, 0], nd_front[:, 1])
+    plt.pause(0.5)
+    plt.ioff()
+
+
+
+
+
+
+
+
+
+
+
+def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, flag, **kwargs):
     #  NP: number of population members/popsize
     #  itermax: number of generation
-    import matplotlib.pyplot as plt
-    import pygmo as pg
-    plt.ion()
+    #  kwargs for this method is for plot, keys are train_y
+
+    if flag:
+        plot_infill_landscape(**kwargs)
+        ndf, dl, dc, ndr = pg.fast_non_dominated_sorting(kwargs['train_y'])
+        ndf = list(ndf)
+
+        # extract nd for normalization
+        if len(ndf[0]) > 1:
+            ndf_extend = ndf[0]
+        else:
+            ndf_extend = np.append(ndf[0], ndf[1])
+
+        nd_front = kwargs['train_y'][ndf_extend, :]
 
     dimensions = len(bounds)
     # Check input variables
@@ -154,20 +208,28 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
         itermax = 200
         print('generation size is set to default 200')
 
+    # insert guide population
+    if insertpop is not None:
+        check_array(insertpop)
+        n_insertpop = len(insertpop)
+        n_rest = NP - n_insertpop
+        if n_insertpop > NP:  # rear situation where nd is larger than evolution population size
+            n_rest = 1
+            insertpop = insertpop[0:NP-1, :]
+    else:
+        n_rest = NP
+
     # Initialize population and some arrays
     # if pop is a matrix of size NPxD. It will be initialized with random
     # values between the min and max values of the parameters
-
     min_b, max_b = np.asarray(bounds).T
-    pop = np.random.rand(NP, dimensions)
+    pop = np.random.rand(n_rest, dimensions)
     pop_x = min_b + pop * (max_b - min_b)
-    # for test
-    # pop_x = np.loadtxt('pop.csv', delimiter=',')
+    if insertpop is not None:  # attach guide population
+        pop_x = np.vstack((pop_x, insertpop))
 
     XVmin = np.repeat(np.atleast_2d(min_b), NP, axis=0)
     XVmax = np.repeat(np.atleast_2d(max_b), NP, axis=0)
-
-
 
     if ncon != 0:
         pop_f, pop_g = problem.evaluate(pop_x, return_values_of=["F", "G"], **kwargs)
@@ -181,8 +243,9 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
 
 
     #-------------plot---------
+    '''
     if flag:
-        plt.clf()
+        # plt.clf()
         obj_f1, _ = kwargs['krg'][0].predict(pop_x)
         obj_f2, _ = kwargs['krg'][1].predict(pop_x)
         nadir = kwargs['nadir']
@@ -193,16 +256,14 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
         nd_front = train_y[ndf[0], :]
         plt.scatter(nd_front[:, 0], nd_front[:, 1], marker='o', c='g')
         plt.scatter(obj_f1.ravel(), obj_f2.ravel())
-        plt.xlim((0, 3))
-        plt.ylim((0, 4))
+        # plt.xlim((0, 3))
+        # plt.ylim((0, 4))
         plt.scatter(nadir[0], nadir[1], marker='+', c='r')
         plt.text(nadir[0], nadir[1], 'nadir')
         plt.scatter(ideal[0], ideal[1], marker='+', c='r')
         plt.text(ideal[0], ideal[1], 'ideal')
         plt.pause(0.5)
-
-
-
+    '''
 
 
     # best member of current iteration
@@ -239,29 +300,17 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
 
         # shuffle locations of vectors
         a1 = np.random.permutation(NP)
-        # for test
-        # a1 = np.loadtxt('a1.csv', delimiter=',')
-        # a1 = np.array(list(map(int, a1)))-1
 
         # rotate indices by ind(1) positions
         rt = np.remainder(rot + ind[0], NP)
         # rotate vector locations
         a2 = a1[rt]
-        # for test
-        # a2 = np.loadtxt('a2.csv', delimiter=',')
-        # a2 = np.array(list(map(int, a2)))-1
 
         rt = np.remainder(rot + ind[1], NP)
         a3 = a2[rt]
-        # for test
-        # a3 = np.loadtxt('a3.csv', delimiter=',')
-        # a3 = np.array(list(map(int, a3)))-1
 
         rt = np.remainder(rot + ind[2], NP)
         a4 = a3[rt]
-        # for test
-        # a4 = np.loadtxt('a4.csv', delimiter=',')
-        # a4 = np.array(list(map(int, a4)))-1
 
         rt = np.remainder(rot + ind[3], NP)
         a5 = a4[rt]
@@ -282,8 +331,6 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
             bm[i, :] = bestmemit
 
         mui = np.random.rand(NP, dimensions) < CR
-        # mui = np.loadtxt('mui.csv', delimiter=',')
-
         if strategy > 5:
             st = strategy - 5
         else:
@@ -293,30 +340,26 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
             # did not implement following strategy process
 
         # inverse mask to mui
-        # mpo = ~mui
+        # mpo = ~mui same as following one
         mpo = mui < 0.5
-
 
         if st == 1:  # DE/best/1
             # differential variation
-            ui = bm + F * (pm1 - pm2)
+            ui = bm + F * (pm1 - pm2)  # permutate best member population
             # crossover
-            ui = oldpop_x * mpo + ui * mui
+            ui = oldpop_x * mpo + ui * mui  # partially old population, partially new population
 
         if st == 2:  # DE/rand/1
             # differential variation
             ui = pm3 + F * (pm1 - pm2)
             # crossover
             ui = oldpop_x * mpo + ui * mui
-
         if st == 3:  # DE/rand-to-best/1
             ui = oldpop_x + F * (bm - oldpop_x) + F * (pm1 - pm2)
             ui = oldpop_x * mpo + ui * mui
-
         if st == 4:  # DE/best/2
             ui = bm + F * (pm1 - pm2 + pm3 - pm4)
             ui = oldpop_x * mpo + ui * mui
-
         if st == 5:  #DE/rand/2
             ui = pm5 + F * (pm1 - pm2 + pm3 - pm4)
             ui = oldpop_x * mpo + ui * mui
@@ -361,11 +404,6 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
                         "multiple best values, selected first"
                     )
                 bestmem = ui[ibest[0][0], :]
-
-
-
-
-
             # freeze the best member of this iteration for the coming
             # iteration. This is needed for some of the strategies.
             bestmemit = bestmem.copy()
@@ -376,28 +414,31 @@ def optimizer_DE(problem, nobj, ncon, bounds, recordFlag, pop_test, F, CR, NP, i
         iter = iter + 1
 
         if flag:
-            plt.clf()
+            # plt.clf()
             obj_f1, _ = kwargs['krg'][0].predict(pop_x)
             obj_f2, _ = kwargs['krg'][1].predict(pop_x)
             nadir = kwargs['nadir']
             ideal = kwargs['ideal']
-            plt.scatter(obj_f1.ravel(), obj_f2.ravel(),  c='r')
-            plt.xlim((0, 3))
-            plt.ylim((0, 4))
-            plt.scatter(nadir[0], nadir[1], marker='+', c='r')
-            plt.text(nadir[0], nadir[1], 'nadir')
-            plt.scatter(ideal[0], ideal[1], marker='+', c='r')
+            plt.scatter(obj_f1.ravel(), obj_f2.ravel(),  c='k')
+            plt.scatter(nadir[0], nadir[1], marker='+', c='g')
+            plt.text(nadir[0]+0.2, nadir[1]+0.2, 'nadir')
+            plt.scatter(ideal[0], ideal[1], marker='+', c='g')
             plt.scatter(nd_front[:, 0], nd_front[:, 1], marker='o', c='g')
-            plt.text(ideal[0], ideal[1], 'ideal')
+            plt.text(ideal[0]-0.2, ideal[1]-0.2, 'ideal')
+            t = 'Infill search process and landscape: ' + kwargs['problem_name']
+            plt.title(t)
             plt.pause(0.5)
+
             print(pop_f.reshape(1, -1))
 
         del oldpop_x
+    # t = 'Infill_search_'+ problem.name +'.png'
+    # plt.savefig(t)
 
     plt.ioff()
     #print(pop_f.reshape(1, -1))
 
-    return np.atleast_2d(bestmem), np.atleast_2d(bestval)
+    return np.atleast_2d(bestmem), np.atleast_2d(bestval), pop_x, pop_f
 
 
 

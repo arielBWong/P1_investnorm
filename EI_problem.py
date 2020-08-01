@@ -8,6 +8,47 @@ import pygmo as pg
 from pymop.factory import get_problem_from_func
 
 
+def ego_believer(x, krg, nd_front, ref):
+    '''
+    This function return x's evaluation results using kriging believer and hypervolume
+    :param x: population of design variables to be evaluated with kriging
+    :param krg:  (list) kriging models for each objective
+    :param nd_front:  current nd front for mo problems
+    :param ref:  reference point for calculating hypervolume
+    :return:
+    '''
+    x = np.atleast_2d(x)
+    n_samples = x.shape[0]
+    n_obj = len(krg)
+    pred_obj = []
+    for model in krg:
+        y = model.predict(x)
+        pred_obj = np.append(pred_obj, y)
+
+    pred_obj = np.atleast_2d(pred_obj).reshape(-1, n_obj,  order='F')
+    hv_class = pg.hypervolume(nd_front)
+    ndhv_value = hv_class.compute(ref)
+
+    fit = np.zeros((n_samples, 1))
+    for i in range(n_samples):
+        pred_instance = pred_obj[i, :]
+        if np.any(pred_instance - ref > 0):
+            fit[i] = 0
+        else:
+            hv_class = pg.hypervolume(np.vstack((nd_front, pred_instance)))
+            fit[i] = hv_class.compute(ref) - ndhv_value
+
+    fit = np.atleast_2d(fit)
+    return fit
+
+
+
+
+
+
+
+
+
 def expected_improvement(X,
                          X_sample,
                          Y_sample,

@@ -15,6 +15,7 @@ class single_krg_optim(Problem):
         self.xl = anp.array(low)
         self.xu = anp.array(up)
         self.model = krg
+        self.name = 'optimization on kriging'
         super().__init__(n_var=self.n_var,
                          n_obj=self.n_obj,
                          n_constr=self.n_constr,

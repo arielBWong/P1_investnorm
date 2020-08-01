@@ -603,18 +603,18 @@ if __name__ == "__main__":
     # run_extract_result(run_signature[2])
 
     MO_target_problems = [
-          # 'ZDT1(n_var=6)',
-          # 'ZDT2(n_var=6)',
-          # 'ZDT3(n_var=6)',
+           'ZDT1(n_var=6)',
+           'ZDT2(n_var=6)',
+           'ZDT3(n_var=6)',
           'WFG.WFG_1(n_var=6, n_obj=2, K=4)',
-          # 'WFG.WFG_2(n_var=6, n_obj=2, K=4)',
-         #  'WFG.WFG_3(n_var=6, n_obj=2, K=4)',
-         #  'WFG.WFG_4(n_var=6, n_obj=2, K=4)',
-         # #   'WFG.WFG_5(n_var=6, n_obj=2, K=4)',
-         #  'WFG.WFG_6(n_var=6, n_obj=2, K=4)',
-          # 'WFG.WFG_7(n_var=6, n_obj=2, K=4)',
-         # 'WFG.WFG_8(n_var=6, n_obj=2, K=4)',
-         # 'WFG.WFG_9(n_var=6, n_obj=2, K=4)',
+           'WFG.WFG_2(n_var=6, n_obj=2, K=4)',
+          'WFG.WFG_3(n_var=6, n_obj=2, K=4)',
+           'WFG.WFG_4(n_var=6, n_obj=2, K=4)',
+            'WFG.WFG_5(n_var=6, n_obj=2, K=4)',
+           'WFG.WFG_6(n_var=6, n_obj=2, K=4)',
+           'WFG.WFG_7(n_var=6, n_obj=2, K=4)',
+          'WFG.WFG_8(n_var=6, n_obj=2, K=4)',
+          'WFG.WFG_9(n_var=6, n_obj=2, K=4)',
           'DTLZ1(n_var=6, n_obj=2)',
           'DTLZ2(n_var=6, n_obj=2)',
           'DTLZs.DTLZ5(n_var=6, n_obj=2)',
@@ -625,14 +625,14 @@ if __name__ == "__main__":
 
     #plot_pareto_vs_ouputs_compare(MO_target_problems[0], 7, 6,  run_signature[0], run_signature[1], run_signature[0], run_signature[1])
 
-    for i in np.arange(30, 40):
+    for i in np.arange(0, 21):
         seed = [i]
         for problem in MO_target_problems:
             for method in run_signature:
                 a = 0
                 # plot_pareto_vs_ouputs(problem, seed, method, method, 'ref_compare_visual')
 
-    seeds = np.arange(20, 31)
+    seeds = np.arange(0, 21)
     combine_hv_igd_out(run_signature, seeds, MO_target_problems, 'ref_compare_num')
 
 
