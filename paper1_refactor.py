@@ -338,6 +338,69 @@ def nd2csv(train_y, target_problem, seed_index, method_selection, search_ideal):
     ndfront = train_y[ndindex, :]
     np.savetxt(savename, ndfront, delimiter=',')
 
+def pfnd2csv(pf_nd, target_problem, seed_index, method_selection, search_ideal):
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    if not os.path.exists(path):
+        os.mkdir(path)
+    savefolder = path + '\\' + target_problem.name() + '_' + method_selection + '_' + str(int(search_ideal))
+    if not os.path.exists(savefolder):
+        os.mkdir(savefolder)
+    savename = savefolder + '\\hvconvg_seed_' + str(seed_index) + '.csv'
+    np.savetxt(savename, pf_nd, delimiter=',')
+
+
+def plot_initpop(train_y, target_problem, method_selection, search_ideal, seed):
+    '''
+    this function save png and eps plot of init population w.r.t. pareto front
+    :param train_y:
+    :param target_problem:
+    :param seed
+    :return: no return saved to target folder
+            \problem_method_ideal\initpop_1.csv
+    '''
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    if not os.path.exists(path):
+        os.mkdir(path)
+    savefolder = path + '\\' + target_problem.name() + '_' + method_selection + '_' + str(int(search_ideal))
+    if not os.path.exists(savefolder):
+        os.mkdir(savefolder)
+    savename1 = savefolder + '\\initpop_' + str(seed) + '.eps'
+    savename2 = savefolder + '\\initpop_' + str(seed) + '.png'
+
+    pf = target_problem.pareto_front(n_pareto_points=100)
+    plt.plot(pf[:, 0], pf[:, 1], c='red')
+    plt.plot(train_y[:, 0], train_y[:, 1], marker='X', c='blue')
+    plt.xlabel('f1')
+    plt.ylabel('f2')
+    plt.legend(['PF', 'Initialization'])
+    plt.savefig(savename1, format='eps')
+    plt.savefig(savename2)
+
+
+def hv_converge(target_problem, train_y):
+    '''
+    every iteration, this function takes pf and nd_front, and return two values of [hv_pf, hv_nd]
+    :param target_problem:  used to generate pareto front
+    :param train_y:  used to generate nd front
+    :return: hv_pf, hv_nd
+    '''
+    pf = target_problem.pareto_front(n_pareto_points=100)
+    nd = get_ndfront(train_y)
+    pf_endmax = np.max(pf, axis=0)
+    pf_endmin = np.min(pf, axis=0)
+    pf = (pf - pf_endmin) / (pf_endmax - pf_endmin)
+    nd = (nd - pf_endmin) / (pf_endmax - pf_endmin)
+    ref = [1.1] * train_y.shape[1]
+
+    pf_hv = gethv(pf, ref)
+    nd_hv = gethv(nd, ref)
+    return pf_hv, nd_hv
+
+def gethv(front, ref):
+    hv_class = pg.hypervolume(front)
+    return hv_class.compute(ref)
 
 def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen):
     '''
@@ -353,6 +416,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     # (3) train krg
     # (4) enter iteration, propose next x till number of iteration is met
     # (5) save nd front under name \problem_method_i\nd_seed_1.csv
+    # (6) save hv converge  under name \problem_method_i\hvconvg_seed_1.csv
 
     enable_crossvalidation = False
     mp.freeze_support()
@@ -361,16 +425,20 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     target_problem = eval(target_problem)
     print('Problem %s, seed %d' % (target_problem.name(), seed_index))
     hv_ref = [1.1, 1.1]
+
+
     plt.ion()
     true_pf = target_problem.pareto_front(n_pareto_points=100)
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
     number_of_initial_samples = 11 * n_vals - 1
     n_iter = max_eval - number_of_initial_samples  # stopping criterion set
+    #--- analysis parameter, due to search_ideal, size is un-determined
+    pf_nd = []
 
     # (1) init training data with number of initial_samples
     train_x, train_y, cons_y = init_xy(number_of_initial_samples, target_problem, seed_index)
-
+    plot_initpop(train_y, target_problem)
     # (2) normalization scheme
     norm_scheme = eval(method_selection)
     norm_train_y = norm_scheme(train_y)
@@ -392,14 +460,14 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     for iteration in range(n_iter):
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
-        #----------
+        #---------- visual check
         plt.clf()
         plt.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
         plt.scatter(train_y[:, 0], train_y[:, 1], c='blue')
         nd_front = get_ndfront(norm_train_y)
         nd_frontdn = denormalize(nd_front, train_y)
         plt.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], c='red')
-        #-----------
+        #-----------visual check
         # use my own DE faster
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref}
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
@@ -412,25 +480,39 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         next_x = np.atleast_2d(next_x).reshape(-1, n_vals)
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
-        #--------
+        #--------visual check
         plt.scatter(next_y[:, 0], next_y[:, 1], c='green')
         plt.pause(0.5)
-        #------------
+        #------------visual check
 
         # add new proposed data
         train_x = np.vstack((train_x, next_x))
         train_y = np.vstack((train_y, next_y))
+
+
+        # analysis parameter, always follow np.vstack
+        pf_hv, nd_hv = hv_converge(target_problem, train_y)
+        pf_nd = np.append(pf_nd, pf_hv)
+        pf_nd = np.append(pf_nd, nd_hv)
+
+
         # (4-2) according to configuration determine whether to estimate new point
         if search_ideal:
             if confirm_search(next_y, train_y[0:-1, :]):
                 train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
+                # analysis parameter, always follow np.vstack
+                pf_hv, nd_hv = hv_converge(target_problem, train_y)
+                pf_nd = np.append(pf_nd, pf_hv)
+                pf_nd = np.append(pf_nd, nd_hv)
 
         # retrain krg, normalization needed
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
 
     # (5) save nd front under name \problem_method_i\nd_seed_1.csv
+    # (6) save hv converge  under name \problem_method_i\hvconvg_seed_1.csv
     nd2csv(train_y, target_problem, seed_index, method_selection, search_ideal)
+    pfnd2csv(pf_nd, target_problem, seed_index, method_selection, search_ideal)
 
 
 def single_run():
