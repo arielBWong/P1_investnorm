@@ -2,10 +2,60 @@ import numpy as np
 from scipy.stats import norm
 from sklearn.utils.validation import check_array
 import pygmo as pg
+from scipy import special
 
 
-# this will be the evaluation function that is called each time
-from pymop.factory import get_problem_from_func
+
+def gaussiancdf(x):
+    # x = check_array(x)
+    y = 0.5 * (1 + special.erf(x / np.sqrt(2)))
+    return y
+
+def gausspdf(x):
+    # x = check_array(x)
+    y = 1/np.sqrt(2*np.pi) * np.exp(-np.square(x)/2)
+    return y
+
+
+def EIM_hv(mu, sig, nd_front, reference_point):
+
+    # mu sig nu_front has to be np_2d
+    mu = check_array(mu)
+    sig = check_array(sig)
+    nd_front = check_array(nd_front)
+    reference_point = check_array(reference_point)
+
+    # np.savetxt('sig.csv', sig, delimiter=',')
+    # np.savetxt('mu.csv', mu, delimiter=',')
+    # np.savetxt('nd_front.csv', nd_front, delimiter=',')
+
+    n_nd = nd_front.shape[0]
+    n_mu = mu.shape[0]
+
+    mu_extend = np.repeat(mu, n_nd, axis=0)
+    sig_extend = np.repeat(sig, n_nd, axis=0)
+    r_extend = np.repeat(reference_point, n_nd * n_mu, axis=0)
+
+    nd_front_extend = np.tile(nd_front, (n_mu, 1))
+
+    imp = (nd_front_extend - mu_extend)/sig_extend
+    EIM = (nd_front_extend - mu_extend) * gaussiancdf(imp) + \
+            sig_extend * gausspdf(imp)
+
+    y1 = np.prod((r_extend - nd_front_extend + EIM), axis=1)
+    y2 = np.prod((r_extend - nd_front_extend), axis=1)
+
+    y = np.atleast_2d((y1 - y2)).reshape(-1, n_nd)
+    y = np.min(y, axis=1)
+    y = np.atleast_2d(y).reshape(-1, 1)
+
+    # one beyond reference
+    # diff = reference_point - mu
+    # y_beyond = np.any(diff < 0, axis=1)
+    # y_beyond = np.atleast_2d(y_beyond).reshape(-1, 1)
+    # y = y * y_beyond
+    return y
+
 
 
 def ego_believer(x, krg, nd_front, ref):
@@ -22,17 +72,18 @@ def ego_believer(x, krg, nd_front, ref):
     n_obj = len(krg)
     pred_obj = []
     for model in krg:
-        y = model.predict(x)
+        y, _ = model.predict(x)
         pred_obj = np.append(pred_obj, y)
 
     pred_obj = np.atleast_2d(pred_obj).reshape(-1, n_obj,  order='F')
+
     hv_class = pg.hypervolume(nd_front)
     ndhv_value = hv_class.compute(ref)
 
     fit = np.zeros((n_samples, 1))
     for i in range(n_samples):
         pred_instance = pred_obj[i, :]
-        if np.any(pred_instance - ref > 0):
+        if np.any(pred_instance - ref >= 0):
             fit[i] = 0
         else:
             hv_class = pg.hypervolume(np.vstack((nd_front, pred_instance)))
@@ -44,9 +95,29 @@ def ego_believer(x, krg, nd_front, ref):
 
 
 
+def ego_eim(x, krg, nd_front, ref):
+    '''
+    multiple objective, no constraint problems
+    :param x:
+    :param krg:
+    :param nd_front:
+    :param ref:
+    :return:
+    '''
+    x = np.atleast_2d(x)
+    n_samples = x.shape[0]
+    n_obj = len(krg)
+    pred_obj = []
+    pred_sig = []
+    for model in krg:
+        y, s = model.predict(x)
+        pred_obj = np.append(pred_obj, y)
+        pred_sig = np.append(pred_obj, s)
+    pred_obj = pred_obj.reshape(-1, n_obj)
+    pred_sig = pred_sig.reshape(-1, n_obj)
 
-
-
+    eim = EIM_hv(pred_obj, pred_sig, nd_front, ref)
+    return eim
 
 
 def expected_improvement(X,

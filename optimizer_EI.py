@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 import pyDOE
 from EI_krg import normalization_with_nd, EI_hv, EI_hv_contribution
 from sklearn.utils.validation import check_array
+import os
+
+
 def optimizer(problem, nobj, ncon, bounds, recordFlag, pop_test, mut, crossp, popsize, its,  **kwargs):
 
     record_f = list()
@@ -160,32 +163,140 @@ def plot_infill_landscape(train_x, train_y, norm_train_y, krg, krg_g, nadir, ide
     plt.ioff()
 
 
+def get_ndfront(train_y):
+    '''
+       :param train_y: np.2d
+       :return: nd front points extracted from train_y
+       '''
+    ndf, dl, dc, ndr = pg.fast_non_dominated_sorting(train_y)
+    ndf = list(ndf)
+    ndf_index = ndf[0]
+    nd_front = train_y[ndf_index, :]
+    return nd_front
+
+def plotde_gens(ax, popf, denormalize, norm_orig, real_prob):
+    '''
+    This function takes current f population of de, denormalize them
+    and plot to ax
+    :param ax: plot ax
+    :param popf: population to be ploted
+    :param denormalize denomalization function name
+    :param norm_orig  list of data that is used for creating  normalization bounds
+    :return:
+    '''
+
+    #----restore background
+    ax.cla()
+    true_pf = real_prob.pareto_front(n_pareto_points=100)
+    ax.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
+    ax.scatter(norm_orig[:, 0], norm_orig[:, 1], c='blue')
+    nd_front = get_ndfront(norm_orig)
+    ax.scatter(nd_front[:, 0], nd_front[:, 1], c='red')
+    # -------restore back ground
+
+    popf_denorm = denormalize(popf, norm_orig)
+    ax.scatter(popf_denorm[:, 0], popf_denorm[:, 1], facecolors='none', edgecolors='black')
+    plt.pause(0.1)
+
+def visualize_egobelieverde(ax, pop_x, **kwargs):
+    denormalize = kwargs['denorm']
+    norm_orig = kwargs['normdata']
+    pred_model = kwargs['pred_model']
+    real_prob = kwargs['real_prob']
+    pred_f = model_pred(pop_x, pred_model)
+    plotde_gens(ax, pred_f, denormalize, norm_orig, real_prob)
+
+def visualize_firstgenlandscape(pop_x, **kwargs):
+    '''
+    this function creates a landscape plot of first generation for de
+    it uses ref (reference point, hard coded),  to form boundary for plot
+    then uses meshgrid type data to form a color plot of search landscape
+    :param pop_x:
+    :param kwargs:
+    :return:
+    '''
+
+    denormalize = kwargs['denorm']
+    norm_orig = kwargs['normdata']
+    pred_model = kwargs['pred_model']
+    real_prob = kwargs['real_prob']
+
+    pred_f = model_pred(pop_x, pred_model)
+    n_obj = pred_f.shape[1]
+    if n_obj > 2:
+        raise ( "not compatible with objective more than 2")
+
+    ref = [1.1] * n_obj
+    ideal_zero = [0] * n_obj
+    ref_dn = denormalize(np.atleast_2d(ref), norm_orig)
+    ideal_zerodn = denormalize(np.atleast_2d(ideal_zero), norm_orig)
+
+    n = 50
+    f1 = np.linspace(ideal_zerodn[0, 0], ref_dn[0, 0], n)
+    f2 = np.linspace(ideal_zerodn[0, 1], ref_dn[0, 1], n)
+
+    nd_front = get_ndfront(norm_orig)  # original space
+    hv_class = pg.hypervolume(nd_front)
+    ref_dn = ref_dn.flatten()
+    ndhv_value = hv_class.compute(ref_dn)
+
+    # meshgrid
+    f = np.zeros((n, n))
+    f1_m, f2_m = np.meshgrid(f1, f2)
+    for i in range(n):
+        for j in range(n):
+            pred_instance = [f1_m[i, j], f2_m[i, j]]
+            if np.any(pred_instance - ref_dn >= 0):
+                f[i, j] = 0
+            else:
+                hv_class = pg.hypervolume(np.vstack((nd_front, pred_instance)))
+                f[i, j] = hv_class.compute(ref_dn) - ndhv_value
+
+    # plt.ion()
+    figure, ax = plt.subplots()
+    ax.pcolormesh(f1_m, f2_m, f)
+
+    true_pf = real_prob.pareto_front(n_pareto_points=100)
+    ax.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
+    ax.scatter(norm_orig[:, 0], norm_orig[:, 1], c='blue')
+    nd_front = get_ndfront(norm_orig)
+    ax.scatter(nd_front[:, 0], nd_front[:, 1], c='red')
+
+    # plt.pause(5)
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    savefolder = path + '\\' + real_prob.name()
+    if not os.path.exists(savefolder):
+        os.mkdir(savefolder)
+    savename1 = savefolder + '\\firstlandscape.eps'
+    savename2 = savefolder + '\\firstlandscape.png'
+    plt.savefig(savename1, format='eps')
+    plt.savefig(savename2)
+    plt.ioff()
 
 
 
 
 
 
+def model_pred(x, models):
+    x = np.atleast_2d(x)
+    n_samples = x.shape[0]
+    n_obj = len(models)
+    pred_obj = []
+    for model in models:
+        y, _ = model.predict(x)
+        pred_obj = np.append(pred_obj, y)
+
+    pred_obj = np.atleast_2d(pred_obj).reshape(-1, n_obj, order='F')
+    return pred_obj
 
 
 
-def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, flag, **kwargs):
+def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, visflag, ax, **kwargs):
     #  NP: number of population members/popsize
     #  itermax: number of generation
     #  kwargs for this method is for plot, keys are train_y
-
-    if flag:
-        plot_infill_landscape(**kwargs)
-        ndf, dl, dc, ndr = pg.fast_non_dominated_sorting(kwargs['train_y'])
-        ndf = list(ndf)
-
-        # extract nd for normalization
-        if len(ndf[0]) > 1:
-            ndf_extend = ndf[0]
-        else:
-            ndf_extend = np.append(ndf[0], ndf[1])
-
-        nd_front = kwargs['train_y'][ndf_extend, :]
 
     dimensions = len(bounds)
     # Check input variables
@@ -228,6 +339,8 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, flag, **k
     if insertpop is not None:  # attach guide population
         pop_x = np.vstack((pop_x, insertpop))
 
+
+
     XVmin = np.repeat(np.atleast_2d(min_b), NP, axis=0)
     XVmax = np.repeat(np.atleast_2d(max_b), NP, axis=0)
 
@@ -241,29 +354,6 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, flag, **k
         # np.savetxt('test_x.csv', pop_x, delimiter=',')
         pop_f = problem.evaluate(pop_x, return_values_of=["F"], **kwargs)
 
-
-    #-------------plot---------
-    '''
-    if flag:
-        # plt.clf()
-        obj_f1, _ = kwargs['krg'][0].predict(pop_x)
-        obj_f2, _ = kwargs['krg'][1].predict(pop_x)
-        nadir = kwargs['nadir']
-        ideal = kwargs['ideal']
-        train_y = kwargs['train_y']
-        ndf, dl, dc, ndr = pg.fast_non_dominated_sorting(train_y)
-        ndf = list(ndf)
-        nd_front = train_y[ndf[0], :]
-        plt.scatter(nd_front[:, 0], nd_front[:, 1], marker='o', c='g')
-        plt.scatter(obj_f1.ravel(), obj_f2.ravel())
-        # plt.xlim((0, 3))
-        # plt.ylim((0, 4))
-        plt.scatter(nadir[0], nadir[1], marker='+', c='r')
-        plt.text(nadir[0], nadir[1], 'nadir')
-        plt.scatter(ideal[0], ideal[1], marker='+', c='r')
-        plt.text(ideal[0], ideal[1], 'ideal')
-        plt.pause(0.5)
-    '''
 
 
     # best member of current iteration
@@ -291,6 +381,17 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, flag, **k
 
     iter = 1
     while iter < itermax and bestval > VTR:
+
+        if visflag:
+            # visflag and ax come in pairs
+            visualize_egobelieverde(ax, pop_x, **kwargs)
+            if iter == 1:
+                visualize_firstgenlandscape(pop_x, **kwargs)
+
+
+
+
+
         # save the old population
         # print('iteration: %d' % iter)
         oldpop_x = pop_x.copy()
@@ -412,31 +513,7 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, flag, **k
             print('Iteration: %d,  Best: %.4f,  F: %.4f,  CR: %.4f,  NP: %d' % (iter, bestval, F, CR, NP))
 
         iter = iter + 1
-
-        if flag:
-            # plt.clf()
-            obj_f1, _ = kwargs['krg'][0].predict(pop_x)
-            obj_f2, _ = kwargs['krg'][1].predict(pop_x)
-            nadir = kwargs['nadir']
-            ideal = kwargs['ideal']
-            plt.scatter(obj_f1.ravel(), obj_f2.ravel(),  c='k')
-            plt.scatter(nadir[0], nadir[1], marker='+', c='g')
-            plt.text(nadir[0]+0.2, nadir[1]+0.2, 'nadir')
-            plt.scatter(ideal[0], ideal[1], marker='+', c='g')
-            plt.scatter(nd_front[:, 0], nd_front[:, 1], marker='o', c='g')
-            plt.text(ideal[0]-0.2, ideal[1]-0.2, 'ideal')
-            t = 'Infill search process and landscape: ' + kwargs['problem_name']
-            plt.title(t)
-            plt.pause(0.5)
-
-            print(pop_f.reshape(1, -1))
-
         del oldpop_x
-    # t = 'Infill_search_'+ problem.name +'.png'
-    # plt.savefig(t)
-
-    plt.ioff()
-    #print(pop_f.reshape(1, -1))
 
     return np.atleast_2d(bestmem), np.atleast_2d(bestval), pop_x, pop_f
 

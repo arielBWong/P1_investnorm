@@ -1060,7 +1060,8 @@ def main(seed_index, target_problem, enable_crossvalidation, method_selection, r
                                                      CR=0.8,
                                                      NP=num_pop,
                                                      itermax=num_gen,
-                                                     flag=plot_flag,
+                                                     visflag=plot_flag,
+                                                     ax=None,
                                                      **evalparas)
 
             candidate_x = np.vstack((candidate_x, pop_x[0, :]))

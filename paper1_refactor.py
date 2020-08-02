@@ -99,7 +99,6 @@ def denormalization_with_self(y_norm, y_normorig):
     return y_denorm
 
 
-
 def normalization_with_nd(y):
     y = check_array(y)
     ndf, dl, dc, ndr = pg.fast_non_dominated_sorting(y)
@@ -269,7 +268,7 @@ def check_krg_ideal_points(krg, n_var, n_constr, n_obj, low, up, guide_x):
 
         guide = np.atleast_2d(guide_x[k_i, :])
         _, _, pop_x, pop_f = optimizer_EI.optimizer_DE(problem, problem.n_constr, single_bounds,
-                                                       guide, 0.8, 0.8, 100, 100, False, **{})
+                                                       guide, 0.8, 0.8, 100, 100, False, None, **{})
 
         # save the last population for lexicon sort
         last_x_pop = np.append(last_x_pop, pop_x)
@@ -347,6 +346,7 @@ def pfnd2csv(pf_nd, target_problem, seed_index, method_selection, search_ideal):
     if not os.path.exists(savefolder):
         os.mkdir(savefolder)
     savename = savefolder + '\\hvconvg_seed_' + str(seed_index) + '.csv'
+    pf_nd = pf_nd.reshape(-1, 2)
     np.savetxt(savename, pf_nd, delimiter=',')
 
 
@@ -370,13 +370,32 @@ def plot_initpop(train_y, target_problem, method_selection, search_ideal, seed):
     savename2 = savefolder + '\\initpop_' + str(seed) + '.png'
 
     pf = target_problem.pareto_front(n_pareto_points=100)
-    plt.plot(pf[:, 0], pf[:, 1], c='red')
-    plt.plot(train_y[:, 0], train_y[:, 1], marker='X', c='blue')
+    plt.scatter(pf[:, 0], pf[:, 1], c='red')
+    plt.scatter(train_y[:, 0], train_y[:, 1], marker='X', c='blue')
+    nd = get_ndfront(train_y)
+    plt.scatter(nd[:, 0], nd[:, 1], marker='X', c='green')
+
     plt.xlabel('f1')
     plt.ylabel('f2')
-    plt.legend(['PF', 'Initialization'])
+    plt.legend(['PF', 'Init population', 'Init nd front'])
+    plt.title(target_problem.name())
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
+
+
+
+def plot_process(ax, problem, train_y, norm_train_y, denormalize):
+
+    true_pf = problem.pareto_front(n_pareto_points=100)
+    # ---------- visual check
+    ax.cla()
+    ax.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
+    ax.scatter(train_y[:, 0], train_y[:, 1], c='blue')
+    nd_front = get_ndfront(norm_train_y)
+    nd_frontdn = denormalize(nd_front, train_y)
+    ax.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], c='red')
+    # -----------visual check
+
 
 
 def hv_converge(target_problem, train_y):
@@ -399,7 +418,17 @@ def hv_converge(target_problem, train_y):
     return pf_hv, nd_hv
 
 def gethv(front, ref):
-    hv_class = pg.hypervolume(front)
+    # front needs to be processed first to eliminate points beyond ref
+    n = front.shape[0]
+    n_obj = front.shape[1]
+    newfront = []
+    for i in range(n):
+        if np.any(front[i, :] > ref):
+            continue
+        else:
+            newfront = np.append(newfront, front[i, :])
+    newfront = newfront.reshape(-1, n_obj)
+    hv_class = pg.hypervolume(newfront)
     return hv_class.compute(ref)
 
 def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen):
@@ -428,17 +457,18 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 
 
     plt.ion()
+    figure, ax = plt.subplots()
     true_pf = target_problem.pareto_front(n_pareto_points=100)
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
     number_of_initial_samples = 11 * n_vals - 1
     n_iter = max_eval - number_of_initial_samples  # stopping criterion set
-    #--- analysis parameter, due to search_ideal, size is un-determined
-    pf_nd = []
+
+    pf_nd = []  # analysis parameter, due to search_ideal, size is un-determined
 
     # (1) init training data with number of initial_samples
     train_x, train_y, cons_y = init_xy(number_of_initial_samples, target_problem, seed_index)
-    plot_initpop(train_y, target_problem)
+    plot_initpop(train_y, target_problem, method_selection, search_ideal, seed_index)
     # (2) normalization scheme
     norm_scheme = eval(method_selection)
     norm_train_y = norm_scheme(train_y)
@@ -460,35 +490,33 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     for iteration in range(n_iter):
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
-        #---------- visual check
-        plt.clf()
-        plt.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
-        plt.scatter(train_y[:, 0], train_y[:, 1], c='blue')
-        nd_front = get_ndfront(norm_train_y)
-        nd_frontdn = denormalize(nd_front, train_y)
-        plt.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], c='red')
-        #-----------visual check
+        # visual check
+        plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
         # use my own DE faster
-        ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref}
+        nd_front = get_ndfront(norm_train_y)
+        ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,
+                        'denorm': denormalize, 'normdata': train_y,
+                        'pred_model': krg, 'real_prob': target_problem}  # last line unnecessary, just for plot
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
+
+        visualplot = False
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
-                                                    False, **ego_evalpara)
+                                                    visualplot, ax, **ego_evalpara)
         # propose next_x location
         # dimension re-check
         next_x = np.atleast_2d(next_x).reshape(-1, n_vals)
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
         #--------visual check
-        plt.scatter(next_y[:, 0], next_y[:, 1], c='green')
-        plt.pause(0.5)
+        ax.scatter(next_y[:, 0], next_y[:, 1], c='green')
+        plt.pause(2)
         #------------visual check
 
         # add new proposed data
         train_x = np.vstack((train_x, next_x))
         train_y = np.vstack((train_y, next_y))
-
 
         # analysis parameter, always follow np.vstack
         pf_hv, nd_hv = hv_converge(target_problem, train_y)
@@ -499,6 +527,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         # (4-2) according to configuration determine whether to estimate new point
         if search_ideal:
             if confirm_search(next_y, train_y[0:-1, :]):
+                print('ideal search')
                 train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
                 # analysis parameter, always follow np.vstack
                 pf_hv, nd_hv = hv_converge(target_problem, train_y)
@@ -530,20 +559,20 @@ def single_run():
     num_pop = hyp['num_pop']
     num_gen = hyp['num_gen']
 
-    target_problem = target_problems[1]
-    seed_index = 0
+    target_problem = target_problems[2]
+    seed_index = 1
     paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen)
     return None
 
 def para_run():
     import json
     problems_json = [# 'dtlz_problems_hv.json'
-        # 'p/zdt_problems_hv.json',
-                     # 'p/zdt_problems_hvnd.json',
+                     'p/zdt_problems_hv.json',
+                     'p/zdt_problems_hvnd.json',
                      'p/zdt_problems_hvndr.json',
                      ]
     args = []
-    seedmax = 3
+    seedmax = 29
     for problem_setting in problems_json:
         with open(problem_setting, 'r') as data_file:
             hyp = json.load(data_file)
@@ -564,5 +593,5 @@ def para_run():
     return None
 
 if __name__ == "__main__":
-   single_run()
-   # para_run()
+   # single_run()
+   para_run()
