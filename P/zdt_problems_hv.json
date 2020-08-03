@@ -6,5 +6,6 @@
 "method_selection": "normalization_with_self",
 "max_eval": 100,
 "num_pop": 100,
-"num_gen": 100
+"num_gen": 100,
+"seedmax": 5
 }

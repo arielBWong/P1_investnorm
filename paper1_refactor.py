@@ -435,7 +435,6 @@ def gethv(front, ref):
         return 0.0
 
 
-
 def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen):
     '''
     :param seed_index:
@@ -496,7 +495,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
+        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
@@ -579,7 +578,7 @@ def para_run():
                      'p/zdt_problems_hvndr.json',
                      ]
     args = []
-    seedmax = 3
+    seedmax = 5
     for problem_setting in problems_json:
         with open(problem_setting, 'r') as data_file:
             hyp = json.load(data_file)
@@ -600,5 +599,5 @@ def para_run():
     return None
 
 if __name__ == "__main__":
-   single_run()
-   # para_run()
+   # single_run()
+   para_run()
