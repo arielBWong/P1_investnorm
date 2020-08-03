@@ -423,13 +423,18 @@ def gethv(front, ref):
     n_obj = front.shape[1]
     newfront = []
     for i in range(n):
-        if np.any(front[i, :] > ref):
+        if np.any(front[i, :] >= ref):
             continue
         else:
             newfront = np.append(newfront, front[i, :])
-    newfront = newfront.reshape(-1, n_obj)
-    hv_class = pg.hypervolume(newfront)
-    return hv_class.compute(ref)
+    newfront = np.atleast_2d(newfront).reshape(-1, n_obj)
+    if len(newfront) > 0:
+        hv_class = pg.hypervolume(newfront)
+        return hv_class.compute(ref)
+    else:
+        return 0.0
+
+
 
 def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen):
     '''
@@ -456,9 +461,9 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     hv_ref = [1.1, 1.1]
 
 
-    plt.ion()
-    figure, ax = plt.subplots()
-    true_pf = target_problem.pareto_front(n_pareto_points=100)
+    # plt.ion()
+    # figure, ax = plt.subplots()
+
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
     number_of_initial_samples = 11 * n_vals - 1
@@ -494,13 +499,15 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
-        ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,
-                        'denorm': denormalize, 'normdata': train_y,
-                        'pred_model': krg, 'real_prob': target_problem}  # last line unnecessary, just for plot
+        ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
+                        'denorm': denormalize, 'normdata': train_y,     # ego search plot parameters
+                        'pred_model': krg, 'real_prob': target_problem,  # ego search plot parameter
+                        'ideal_search': search_ideal, 'seed': seed_index, 'method': method_selection}  # plot save params
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
         visualplot = False
+        ax = None
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
                                                     visualplot, ax, **ego_evalpara)
@@ -510,8 +517,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
         #--------visual check
-        ax.scatter(next_y[:, 0], next_y[:, 1], c='green')
-        plt.pause(2)
+        # ax.scatter(next_y[:, 0], next_y[:, 1], c='green')
+        # plt.pause(2)
         #------------visual check
 
         # add new proposed data
@@ -546,9 +553,9 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 
 def single_run():
     import json
-    # problems_json = 'p/zdt_problems_hvnd'
+    # problems_json = 'p/zdt_problems_hvnd.json'
     problems_json = 'p/zdt_problems_hvndr.json'
-    # problems_json = 'p/zdt_problems_hv'
+    # problems_json = 'p/zdt_problems_hv.json'
 
     with open(problems_json, 'r') as data_file:
         hyp = json.load(data_file)
@@ -559,7 +566,7 @@ def single_run():
     num_pop = hyp['num_pop']
     num_gen = hyp['num_gen']
 
-    target_problem = target_problems[2]
+    target_problem = target_problems[3]
     seed_index = 1
     paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen)
     return None
@@ -572,7 +579,7 @@ def para_run():
                      'p/zdt_problems_hvndr.json',
                      ]
     args = []
-    seedmax = 29
+    seedmax = 3
     for problem_setting in problems_json:
         with open(problem_setting, 'r') as data_file:
             hyp = json.load(data_file)
@@ -593,5 +600,5 @@ def para_run():
     return None
 
 if __name__ == "__main__":
-   # single_run()
-   para_run()
+   single_run()
+   # para_run()

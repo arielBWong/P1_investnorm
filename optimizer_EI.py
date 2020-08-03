@@ -226,14 +226,19 @@ def visualize_firstgenlandscape(pop_x, **kwargs):
     if n_obj > 2:
         raise ( "not compatible with objective more than 2")
 
+    # landscape value is based on contribution on hv
+    # so nd front is the base line
+    # in order to plot clearly, convert plot to original space
+    true_pf = real_prob.pareto_front(n_pareto_points=100)
     ref = [1.1] * n_obj
-    ideal_zero = [0] * n_obj
+    ideal_zerodn = np.min(true_pf, axis=0)
     ref_dn = denormalize(np.atleast_2d(ref), norm_orig)
-    ideal_zerodn = denormalize(np.atleast_2d(ideal_zero), norm_orig)
 
+    #----create mesh grip to plot landscape
     n = 50
-    f1 = np.linspace(ideal_zerodn[0, 0], ref_dn[0, 0], n)
-    f2 = np.linspace(ideal_zerodn[0, 1], ref_dn[0, 1], n)
+    f1 = np.linspace(ideal_zerodn[0], ref_dn[0, 0], n)
+    f2 = np.linspace(ideal_zerodn[1], ref_dn[0, 1], n)
+
 
     nd_front = get_ndfront(norm_orig)  # original space
     hv_class = pg.hypervolume(nd_front)
@@ -252,26 +257,48 @@ def visualize_firstgenlandscape(pop_x, **kwargs):
                 hv_class = pg.hypervolume(np.vstack((nd_front, pred_instance)))
                 f[i, j] = hv_class.compute(ref_dn) - ndhv_value
 
-    # plt.ion()
+    plt.ion()
     figure, ax = plt.subplots()
-    ax.pcolormesh(f1_m, f2_m, f)
+    # plot search landscape
+    ms = ax.pcolormesh(f1_m, f2_m, f, shading='auto', cmap='RdYlBu')
 
-    true_pf = real_prob.pareto_front(n_pareto_points=100)
-    ax.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
-    ax.scatter(norm_orig[:, 0], norm_orig[:, 1], c='blue')
+    # plot training for surrogate
+    # and its nd front
+    # plot pareto front
+    ax.scatter(true_pf[:, 0], true_pf[:, 1], c='green', s=1)
+    # plot training data of surrogate
+    ax.scatter(norm_orig[:, 0], norm_orig[:, 1], c='black')
     nd_front = get_ndfront(norm_orig)
-    ax.scatter(nd_front[:, 0], nd_front[:, 1], c='red')
+    # plot nd front
+    ax.scatter(nd_front[:, 0], nd_front[:, 1], c='blue')
+    # plot reference point
+    ax.scatter(ref_dn[0], ref_dn[1], marker='X', c='green')
+    left, right = plt.xlim()
+    ax.set_xlim(left, right + 0.1)
+    bottom, top = plt.ylim()
+    ax.set_ylim(bottom, top + 0.1)
+    ax.set_xlabel('f1')
+    ax.set_ylabel('f2')
+    plt.colorbar(ms, ax=ax)
+    plt.legend(['PF', 'Init data', 'Init nd', 'Ref'])
+    plt.title(real_prob.name())
 
     # plt.pause(5)
+    # -- plot save verbose---
     path = os.getcwd()
     path = path + '\paper1_results'
     savefolder = path + '\\' + real_prob.name()
     if not os.path.exists(savefolder):
         os.mkdir(savefolder)
-    savename1 = savefolder + '\\firstlandscape.eps'
-    savename2 = savefolder + '\\firstlandscape.png'
+    method_part1 = kwargs['method']
+    method_part2 = kwargs['ideal_search']
+    seed = kwargs['seed']
+    savename1 = savefolder + '\\' + str(method_part1) + '_' + str(method_part2) + '_firstgenlandscape' + str(seed) + '.eps'
+    savename2 = savefolder + '\\' + str(method_part1) + '_' + str(method_part2) + '_firstgenlandscape' + str(seed) + '.png'
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
+    plt.pause(1)
+    plt.close()
     plt.ioff()
 
 
