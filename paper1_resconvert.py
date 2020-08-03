@@ -65,15 +65,16 @@ def hv_summary2csv():
     :return: two csv files (1) raw data hv collection, (2) mean median csv collection
     '''
     import json
-    # problems_json = 'p/zdt_problems_hvnd.json'
-    problems_json = 'p/zdt_problems_hvndr.json'
-    # problems_json = 'p/zdt_problems_hv.json'
+
+    problems_json = 'p/resconvert.json'
+
     # (1) load parameter settings
     with open(problems_json, 'r') as data_file:
         hyp = json.load(data_file)
 
     target_problems = hyp['MO_target_problems']
-    seedmax = 5
+    target_problems = target_problems[4:5]
+    seedmax = 29
 
     num_pro = len(target_problems)
     methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
@@ -103,15 +104,16 @@ def hv_summary2csv():
                 plt.show()
                 plt.pause(0.5)
                 plt.close()
+
                 hv = get_hv(nd_front, ref)
                 print(hv)
-                hv_raw[seed, problem_i * num_pro + j] = hv
+                hv_raw[seed, problem_i * num_methods + j] = hv
     # (2) mean median collection
     hv_stat = np.zeros((3, num_pro*3))
-    for i in range(num_pro * 3):
-        hv_stat[0, i * num_pro] = np.mean(hv_raw[:, i * num_pro])
-        hv_stat[1, i * num_pro + 1] = np.std(hv_raw[:, i * num_pro])
-        hv_stat[2, i * num_pro + 2] = np.median(hv_raw[:, i * num_pro])
+    for i in range(num_pro):
+        hv_stat[0, i * 3] = np.mean(hv_raw[:, i * 3])
+        hv_stat[1, i * 3 + 1] = np.std(hv_raw[:, i * 3 + 1])
+        hv_stat[2, i * 3 + 2] = np.median(hv_raw[:, i * 3 + 2])
 
 
     plt.ioff()
