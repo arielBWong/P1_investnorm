@@ -316,10 +316,11 @@ def idealsearch_update(train_x, train_y, krg, target_problem):
     guide_x = np.atleast_2d(train_x[best_index, :])
 
     # run estimated new best x on each objective
-    x_out = check_krg_ideal_points(krg, n_vals, n_sur_cons, n_sur_objs, target_problem.xl, target_problem.xu,
-                                   guide_x)
+    x_out = check_krg_ideal_points(krg, n_vals, n_sur_cons, n_sur_objs,
+                                   target_problem.xl, target_problem.xu, guide_x)
     train_x, train_y = additional_evaluation(x_out, train_x, train_y, target_problem)
     return train_x, train_y
+
 
 def nd2csv(train_y, target_problem, seed_index, method_selection, search_ideal):
     # (5)save nd front under name \problem_method_i\nd_seed_1.csv

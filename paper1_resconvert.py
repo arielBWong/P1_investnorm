@@ -40,7 +40,7 @@ def get_hv(front, ref):
 
     # eliminate front instance which is beyond reference point
     for i in range(n):
-        if np.any(front[i, :] - ref) >= 0:
+        if np.any(front[i, :] - ref >= 0):
             continue
         else:
             new_front = np.append(new_front, front[i, :])
@@ -73,7 +73,7 @@ def hv_summary2csv():
         hyp = json.load(data_file)
 
     target_problems = hyp['MO_target_problems']
-    seedmax = 29
+    seedmax = 5
 
     num_pro = len(target_problems)
     methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
@@ -104,6 +104,7 @@ def hv_summary2csv():
                 plt.pause(0.5)
                 plt.close()
                 hv = get_hv(nd_front, ref)
+                print(hv)
                 hv_raw[seed, problem_i * num_pro + j] = hv
         a = 0
     plt.ioff()
