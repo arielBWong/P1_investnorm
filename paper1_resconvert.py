@@ -73,9 +73,7 @@ def hv_summary2csv():
         hyp = json.load(data_file)
 
     target_problems = hyp['MO_target_problems']
-    method_selection = hyp['method_selection']
-    search_ideal = hyp['search_ideal']
-    seedmax = hyp['seedmax']
+    seedmax = 29
 
     num_pro = len(target_problems)
     methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
