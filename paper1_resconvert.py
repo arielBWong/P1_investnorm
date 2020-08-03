@@ -106,7 +106,14 @@ def hv_summary2csv():
                 hv = get_hv(nd_front, ref)
                 print(hv)
                 hv_raw[seed, problem_i * num_pro + j] = hv
-        a = 0
+    # (2) mean median collection
+    hv_stat = np.zeros((3, num_pro*3))
+    for i in range(num_pro * 3):
+        hv_stat[0, i * num_pro] = np.mean(hv_raw[:, i * num_pro])
+        hv_stat[1, i * num_pro + 1] = np.std(hv_raw[:, i * num_pro])
+        hv_stat[2, i * num_pro + 2] = np.median(hv_raw[:, i * num_pro])
+
+
     plt.ioff()
     path = path + '\paper1_resconvert'
     if not os.path.exists(path):
@@ -114,11 +121,18 @@ def hv_summary2csv():
     saveraw = path + '\\hvraw.csv'
     np.savetxt(saveraw, hv_raw, delimiter=',')
 
+    savestat = path + '\\hvstat.csv'
+    np.savetxt(savestat, hv_stat, delimiter=',')
 
     print(0)
 
 def igd_summary2csv():
-    print(0)
+    '''
+    this function calculate igd similar to hv above
+    create two files
+    :return:
+    '''
+
 
 if __name__ == "__main__":
     hv_summary2csv()
