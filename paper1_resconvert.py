@@ -56,6 +56,54 @@ def get_hv(front, ref):
 
     return hv
 
+def mat2csv(target_problems, matrix, matrix_sts, methods, seedmax):
+    '''
+    this function iterate through problems and create csv with headers and index
+    :param target_problems:
+    :param matrix:
+    :return:
+    '''
+    num_methods = len(methods)
+    num_prob = len(target_problems)
+
+    # write header
+    path = os.getcwd()
+    path = path + '\\paper1_results\\'
+    savefile = path + 'paper1_resconvert\\results_convert.csv'
+
+    with open(savefile, 'w') as f:
+        # write header
+        f.write(',')
+        for i in range(num_prob):
+            for j in range(num_methods):
+                m = eval(target_problems[i]).name() + '_' + methods[j]
+                f.write(m)
+                f.write(',')
+        f.write('\n')
+
+        for seed in range(seedmax):
+            # write seed
+            f.write(str(seed))
+            f.write(',')
+
+            # write matrix
+            for i in range(num_prob * num_methods):
+                f.write(str(matrix[seed, i]))
+                f.write(',')
+            f.write('\n')
+
+        # write statistics
+        sts = ['mean', 'std', 'median']
+        for s in range(3):
+            f.write(sts[s])
+            f.write(',')
+            for i in range(num_prob * num_methods):
+                f.write(str(matrix_sts[s, i]))
+                f.write(',')
+            f.write('\n')
+
+
+
 
 def hv_summary2csv():
     '''
@@ -73,7 +121,7 @@ def hv_summary2csv():
         hyp = json.load(data_file)
 
     target_problems = hyp['MO_target_problems']
-    target_problems = target_problems[4:5]
+    # target_problems = target_problems[4:5]
     seedmax = 29
 
     num_pro = len(target_problems)
@@ -82,7 +130,7 @@ def hv_summary2csv():
     hv_raw = np.zeros((seedmax, num_pro * 3))
     path = os.getcwd()
     path = path + '\paper1_results'
-    plt.ion()
+    # plt.ion()
     for problem_i, problem in enumerate(target_problems):
         problem = eval(problem)
         pf = problem.pareto_front(n_pareto_points=100)
@@ -96,7 +144,7 @@ def hv_summary2csv():
                 print(savename)
                 nd_front = np.loadtxt(savename, delimiter=',')
                 nd_front = np.atleast_2d(nd_front)
-
+                '''
                 fig, ax = plt.subplots()
                 ax.scatter(pf[:, 0], pf[:, 1])
                 ax.scatter(nd_front[:, 0], nd_front[:, 1])
@@ -104,7 +152,7 @@ def hv_summary2csv():
                 plt.show()
                 plt.pause(0.5)
                 plt.close()
-
+                '''
                 hv = get_hv(nd_front, ref)
                 print(hv)
                 hv_raw[seed, problem_i * num_methods + j] = hv
@@ -123,7 +171,11 @@ def hv_summary2csv():
     saveraw = path + '\\hvraw.csv'
     np.savetxt(saveraw, hv_raw, delimiter=',')
 
+    target_problems = hyp['MO_target_problems']
+    mat2csv(target_problems, hv_raw, hv_stat, methods, seedmax)
+
     savestat = path + '\\hvstat.csv'
+
     np.savetxt(savestat, hv_stat, delimiter=',')
 
     print(0)
