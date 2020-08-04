@@ -370,7 +370,7 @@ def plot_initpop(train_y, target_problem, method_selection, search_ideal, seed):
     savename1 = savefolder + '\\initpop_' + str(seed) + '.eps'
     savename2 = savefolder + '\\initpop_' + str(seed) + '.png'
 
-    pf = target_problem.pareto_front(n_pareto_points=100)
+    pf = get_paretofront(target_problem, 100)
     plt.scatter(pf[:, 0], pf[:, 1], c='red')
     plt.scatter(train_y[:, 0], train_y[:, 1], marker='X', c='blue')
     nd = get_ndfront(train_y)
@@ -383,11 +383,17 @@ def plot_initpop(train_y, target_problem, method_selection, search_ideal, seed):
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
 
-
+def get_paretofront(problem, n):
+    from pymop.factory import get_uniform_weights
+    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1':
+        ref_dir = get_uniform_weights(n, 2)
+        return problem.pareto_front(ref_dir)
+    else:
+        return problem.pareto_front(n_pareto_points=n)
 
 def plot_process(ax, problem, train_y, norm_train_y, denormalize):
 
-    true_pf = problem.pareto_front(n_pareto_points=100)
+    true_pf = get_paretofront(problem, 100)
     # ---------- visual check
     ax.cla()
     ax.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
@@ -406,7 +412,7 @@ def hv_converge(target_problem, train_y):
     :param train_y:  used to generate nd front
     :return: hv_pf, hv_nd
     '''
-    pf = target_problem.pareto_front(n_pareto_points=100)
+    pf = get_paretofront(target_problem, 100)
     nd = get_ndfront(train_y)
     pf_endmax = np.max(pf, axis=0)
     pf_endmin = np.min(pf, axis=0)
@@ -554,7 +560,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 def single_run():
     import json
     # problems_json = 'p/zdt_problems_hvnd.json'
-    problems_json = 'p/zdt_problems_hvndr.json'
+    problems_json = 'p/dtlz_problems_hvndr.json'
     # problems_json = 'p/zdt_problems_hv.json'
 
     with open(problems_json, 'r') as data_file:
@@ -566,7 +572,7 @@ def single_run():
     num_pop = hyp['num_pop']
     num_gen = hyp['num_gen']
 
-    target_problem = target_problems[3]
+    target_problem = target_problems[0]
     seed_index = 1
     paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen)
     return None
@@ -574,12 +580,12 @@ def single_run():
 def para_run():
     import json
     problems_json = [# 'dtlz_problems_hv.json'
-                     'p/zdt_problems_hv.json',
-                     'p/zdt_problems_hvnd.json',
-                     'p/zdt_problems_hvndr.json',
+                     'p/dtlz_problems_hv.json',
+                     'p/dtlz_problems_hvnd.json',
+                     'p/dtlz_problems_hvndr.json',
                      ]
     args = []
-    seedmax = 5
+    seedmax = 29
     for problem_setting in problems_json:
         with open(problem_setting, 'r') as data_file:
             hyp = json.load(data_file)
@@ -600,5 +606,5 @@ def para_run():
     return None
 
 if __name__ == "__main__":
-   # single_run()
-   para_run()
+   single_run()
+   # para_run()
