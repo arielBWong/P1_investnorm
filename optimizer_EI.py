@@ -229,13 +229,13 @@ def visualize_firstgenlandscape(pop_x, **kwargs):
     # landscape value is based on contribution on hv
     # so nd front is the base line
     # in order to plot clearly, convert plot to original space
-    true_pf = real_prob.pareto_front(n_pareto_points=100)
+    true_pf = real_prob.pareto_front(n_pareto_points=1000)
     ref = [1.1] * n_obj
     ideal_zerodn = np.min(true_pf, axis=0)
     ref_dn = denormalize(np.atleast_2d(ref), norm_orig)
 
     #----create mesh grip to plot landscape
-    n = 50
+    n = 100
     f1 = np.linspace(ideal_zerodn[0], ref_dn[0, 0], n)
     f2 = np.linspace(ideal_zerodn[1], ref_dn[0, 1], n)
 

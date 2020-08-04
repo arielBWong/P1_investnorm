@@ -467,8 +467,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     hv_ref = [1.1, 1.1]
 
 
-    # plt.ion()
-    # figure, ax = plt.subplots()
+    plt.ion()
+    figure, ax = plt.subplots()
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -502,7 +502,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
-        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
+        plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
@@ -512,8 +512,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
-        visualplot = False
-        ax = None
+        visualplot = True
+        # ax = None
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
                                                     visualplot, ax, **ego_evalpara)
@@ -605,6 +605,19 @@ def para_run():
 
     return None
 
+def plot_run():
+    target_problems = ["WFG.WFG_2(n_var=6, n_obj=2, K=4)"]
+    method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
+    search_ideal = 1
+    max_eval = 250
+    num_pop = 100
+    num_gen = 100
+    seed_index = 1
+    paper1_mainscript(seed_index, target_problems[0], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
+
+
 if __name__ == "__main__":
+    plot_run()
+    print(np.int(14.7))
    # single_run()
-   para_run()
+   # para_run()

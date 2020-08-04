@@ -8,7 +8,7 @@ from scipy import special
 # this will be the evaluation function that is called each time
 from pymop.factory import get_problem_from_func
 
-def close_adjustment(nd_front):
+def  close_adjustment(nd_front):
 
     # check if any of current nd front got too close to each other
     # align them together

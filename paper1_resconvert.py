@@ -158,10 +158,10 @@ def hv_summary2csv():
                 hv_raw[seed, problem_i * num_methods + j] = hv
     # (2) mean median collection
     hv_stat = np.zeros((3, num_pro*3))
-    for i in range(num_pro):
-        hv_stat[0, i * 3] = np.mean(hv_raw[:, i * 3])
-        hv_stat[1, i * 3 + 1] = np.std(hv_raw[:, i * 3 + 1])
-        hv_stat[2, i * 3 + 2] = np.median(hv_raw[:, i * 3 + 2])
+    for i in range(num_pro*3):
+        hv_stat[0, i] = np.mean(hv_raw[:, i])
+        hv_stat[1, i] = np.std(hv_raw[:, i])
+        hv_stat[2, i] = np.median(hv_raw[:, i])
 
 
     plt.ioff()
