@@ -606,5 +606,5 @@ def para_run():
     return None
 
 if __name__ == "__main__":
-   single_run()
-   # para_run()
+   # single_run()
+   para_run()
