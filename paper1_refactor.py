@@ -523,8 +523,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     hv_ref = [1.1, 1.1]
 
 
-    # plt.ion()
-    # figure, ax = plt.subplots()
+    plt.ion()
+    figure, ax = plt.subplots()
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -560,11 +560,11 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
-<<<<<<< HEAD
+
         plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False)
-=======
+
         # plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
->>>>>>> 0887737410c49c85c1f5d4f771c8741b4959b5d9
+
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
@@ -682,14 +682,8 @@ def plot_run():
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
+
     plot_run()
 
     # single_run()
     # para_run()
-=======
-    # plot_run()
-    # print(np.int(14.7))
-    # single_run()
-    para_run()
->>>>>>> 0887737410c49c85c1f5d4f771c8741b4959b5d9
