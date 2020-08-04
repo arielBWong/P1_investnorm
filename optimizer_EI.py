@@ -366,8 +366,6 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, visflag, 
     if insertpop is not None:  # attach guide population
         pop_x = np.vstack((pop_x, insertpop))
 
-
-
     XVmin = np.repeat(np.atleast_2d(min_b), NP, axis=0)
     XVmax = np.repeat(np.atleast_2d(max_b), NP, axis=0)
 
@@ -408,7 +406,6 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, visflag, 
 
     iter = 1
     while iter < itermax and bestval > VTR:
-
         if visflag:
             # visflag and ax come in pairs
             visualize_egobelieverde(ax, pop_x, **kwargs)

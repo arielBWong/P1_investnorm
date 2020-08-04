@@ -13,6 +13,7 @@ from joblib import dump, load
 import time
 from surrogate_problems import branin, GPc, Gomez3, Mystery, Reverse_Mystery, SHCBc, HS100, Haupt_schewefel, \
     MO_linearTest, single_krg_optim, WFG, iDTLZ, DTLZs, ego_fitness, EI
+from matplotlib.lines import Line2D
 
 import os
 import copy
@@ -391,17 +392,72 @@ def get_paretofront(problem, n):
     else:
         return problem.pareto_front(n_pareto_points=n)
 
-def plot_process(ax, problem, train_y, norm_train_y, denormalize):
+def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch):
 
-    true_pf = get_paretofront(problem, 100)
+    true_pf = get_paretofront(problem, 1000)
     # ---------- visual check
     ax.cla()
-    ax.scatter(true_pf[:, 0], true_pf[:, 1], c='red', s=0.2)
-    ax.scatter(train_y[:, 0], train_y[:, 1], c='blue')
+    ax.scatter(true_pf[:, 0], true_pf[:, 1], c='green', s=0.2)
+    # ax.scatter(train_y[:, 0], train_y[:, 1], c='blue', s=0.02)
     nd_front = get_ndfront(norm_train_y)
     nd_frontdn = denormalize(nd_front, train_y)
-    ax.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], c='red')
+    ax.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], c='blue')
+
+    # plot reference point
+    ref = [1.1] * train_y.shape[1]
+    ref_dn = denormalize(ref, train_y)
+    ax.scatter(ref_dn[0], ref_dn[1], c='black', marker='D')
+
+    plt.legend(['PF', 'nd front', 'ref point'])
     # -----------visual check
+
+    if idealsearch:
+        # search ideal then plot what is searched
+        ax.scatter(train_y[-2:, 0], train_y[-2:, 1], c='red', marker='X', s=100)
+        # reference point
+        plt.legend(['PF', 'nd front', 'ref point', 'ideal search'])
+
+
+    plt.title(problem.name())
+
+
+    ideal = np.min(nd_frontdn, axis=0)
+    nadir = np.max(nd_frontdn, axis=0)
+    line1 = [ideal[0], nadir[0], nadir[0], ideal[0], ideal[0]]
+    line2 = [ideal[1], ideal[1], nadir[1], nadir[1], ideal[1]]
+    line = Line2D(line1, line2, linestyle='--', c='orange')
+    ax.add_line(line)
+
+    # reference line horizon
+    left, right = ax.get_xlim()
+    line_hz1 = [left, ref_dn[0]]
+    line_hz2 = [ref_dn[1], ref_dn[1]]
+    line = Line2D(line_hz1, line_hz2, linestyle='--', c='black')
+    ax.add_line(line)
+
+
+    # reference line vertical
+    bottom, top = ax.get_ylim()
+    line_v1 = [ref_dn[0], ref_dn[0]]
+    line_v2 = [bottom, ref_dn[1]]
+    line = Line2D(line_v1, line_v2, linestyle='--', c='black')
+    ax.add_line(line)
+
+    ax.set_xlabel('f1')
+    ax.set_ylabel('f2')
+
+    # -----
+    path = os.getcwd()
+    savefolder = path + '\\paper1_results\\process_plot'
+    if not os.path.exists(savefolder):
+        os.mkdir(savefolder)
+
+    savename1 = savefolder + '\\' + problem.name() + '_process_ndr_step1.eps'
+    savename2 = savefolder + '\\' + problem.name() + '_process_ndr_step1.png'
+    plt.savefig(savename1, format='eps')
+    plt.savefig(savename2)
+
+    a = 0
 
 
 
@@ -479,7 +535,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 
     # (1) init training data with number of initial_samples
     train_x, train_y, cons_y = init_xy(number_of_initial_samples, target_problem, seed_index)
-    plot_initpop(train_y, target_problem, method_selection, search_ideal, seed_index)
+    # plot_initpop(train_y, target_problem, method_selection, search_ideal, seed_index)
     # (2) normalization scheme
     norm_scheme = eval(method_selection)
     norm_train_y = norm_scheme(train_y)
@@ -494,6 +550,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         train_x, train_y = idealsearch_update(train_x, train_y, krg,target_problem)
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
+        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True)
 
     # (4) enter iteration, propose next x till number of iteration is met
     ego_eval = EI.ego_fit(target_problem.n_var, target_problem.n_obj, target_problem.n_constr, target_problem.xu, target_problem.xl,target_problem.name())
@@ -502,7 +559,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
+        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False)
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
@@ -512,7 +569,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
-        visualplot = True
+        visualplot = False
         # ax = None
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
@@ -523,8 +580,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
         #--------visual check
-        # ax.scatter(next_y[:, 0], next_y[:, 1], c='green')
-        # plt.pause(2)
+        ax.scatter(next_y[:, 0], next_y[:, 1], c='green')
+        plt.pause(2)
         #------------visual check
 
         # add new proposed data
@@ -546,6 +603,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
                 pf_hv, nd_hv = hv_converge(target_problem, train_y)
                 pf_nd = np.append(pf_nd, pf_hv)
                 pf_nd = np.append(pf_nd, nd_hv)
+                plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True)
 
         # retrain krg, normalization needed
         norm_train_y = norm_scheme(train_y)
@@ -560,7 +618,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 def single_run():
     import json
     # problems_json = 'p/zdt_problems_hvnd.json'
-    problems_json = 'p/dtlz_problems_hvndr.json'
+    problems_json = 'p/zdt_problems_hvndr.json'
     # problems_json = 'p/zdt_problems_hv.json'
 
     with open(problems_json, 'r') as data_file:
@@ -573,7 +631,9 @@ def single_run():
     num_gen = hyp['num_gen']
 
     target_problem = target_problems[0]
-    seed_index = 1
+    target_problems = "ZDT1(n_var=6)"
+    method_selection = "normalization_with_nd"
+    seed_index = 8
     paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen)
     return None
 
@@ -606,7 +666,7 @@ def para_run():
     return None
 
 def plot_run():
-    target_problems = ["WFG.WFG_2(n_var=6, n_obj=2, K=4)"]
+    target_problems = ["WFG.WFG_4(n_var=6, n_obj=2, K=4)"]
     method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
     search_ideal = 1
     max_eval = 250
@@ -618,6 +678,6 @@ def plot_run():
 
 if __name__ == "__main__":
     plot_run()
-    print(np.int(14.7))
-   # single_run()
-   # para_run()
+
+    # single_run()
+    # para_run()

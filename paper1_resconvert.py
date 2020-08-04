@@ -13,6 +13,7 @@ from joblib import dump, load
 import time
 from surrogate_problems import branin, GPc, Gomez3, Mystery, Reverse_Mystery, SHCBc, HS100, Haupt_schewefel, \
     MO_linearTest, single_krg_optim, WFG, iDTLZ, DTLZs, ego_fitness, EI
+from matplotlib.lines import Line2D
 
 import os
 import copy
@@ -25,6 +26,13 @@ from scipy.optimize import Bounds
 def hv_convergeplot():
 
     print(0)
+def get_paretofront(problem, n):
+    from pymop.factory import get_uniform_weights
+    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1':
+        ref_dir = get_uniform_weights(n, 2)
+        return problem.pareto_front(ref_dir)
+    else:
+        return problem.pareto_front(n_pareto_points=n)
 
 def get_hv(front, ref):
     '''
@@ -93,8 +101,8 @@ def mat2csv(target_problems, matrix, matrix_sts, methods, seedmax):
             f.write('\n')
 
         # write statistics
-        sts = ['mean', 'std', 'median']
-        for s in range(3):
+        sts = ['mean', 'std', 'median', 'median_id']
+        for s in range(4):
             f.write(sts[s])
             f.write(',')
             for i in range(num_prob * num_methods):
@@ -103,6 +111,64 @@ def mat2csv(target_problems, matrix, matrix_sts, methods, seedmax):
             f.write('\n')
 
 
+def hv_medianplot():
+    '''
+    this function plot the final results of each problem
+    :param seed:
+    :return:
+    '''
+    import json
+
+    problems_json = 'p/resconvert.json'
+
+    # (1) load parameter settings
+    with open(problems_json, 'r') as data_file:
+        hyp = json.load(data_file)
+
+    target_problems = hyp['MO_target_problems']
+    # target_problems = target_problems[4:5]
+
+    num_pro = len(target_problems)
+    methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
+    num_methods = len(methods)
+
+
+    prob_id = 2
+    problem = target_problems[prob_id]
+    method_selection = methods[2]
+    seed = 19
+    problem = eval(problem)
+
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    savefolder = path + '\\' + problem.name() + '_' + method_selection
+    savename = savefolder + '\\nd_seed_' + str(seed) + '.csv'
+    nd_front = np.loadtxt(savename, delimiter=',')
+    nd_front = np.atleast_2d(nd_front)
+    pf = get_paretofront(problem, 1000)
+
+    plt.ion()
+    fig, ax = plt.subplots()
+    ax.scatter(pf[:, 0], pf[:, 1], s=1)
+    ax.scatter(nd_front[:, 0], nd_front[:, 1], facecolors='white', edgecolors='red', alpha=1)
+    plt.title(problem.name())
+    plt.legend(['PF', 'alg results'])
+    plt.xlabel('f1')
+    plt.ylabel('f2')
+
+    #-----
+    path = os.getcwd()
+    savefolder = path + '\\paper1_results\\plots'
+    if not os.path.exists(savefolder):
+        os.mkdir(savefolder)
+
+    savename1 = savefolder + '\\' + problem.name() + '_' + method_selection + '_final_' + str(seed) + '.eps'
+    savename2 = savefolder + '\\' + problem.name() + '_' + method_selection + '_final_' + str(seed) + '.png'
+    plt.savefig(savename1, format='eps')
+    plt.savefig(savename2)
+
+    plt.pause(2)
+    plt.close()
 
 
 def hv_summary2csv():
@@ -157,11 +223,13 @@ def hv_summary2csv():
                 print(hv)
                 hv_raw[seed, problem_i * num_methods + j] = hv
     # (2) mean median collection
-    hv_stat = np.zeros((3, num_pro*3))
+    hv_stat = np.zeros((4, num_pro*3))
     for i in range(num_pro*3):
         hv_stat[0, i] = np.mean(hv_raw[:, i])
         hv_stat[1, i] = np.std(hv_raw[:, i])
-        hv_stat[2, i] = np.median(hv_raw[:, i])
+        sortlist = np.argsort(hv_raw[:, i])
+        hv_stat[2, i] = hv_raw[:, i][sortlist[int(29/2)]]
+        hv_stat[3, i] = sortlist[int(29/2)]
 
 
     plt.ioff()
@@ -190,4 +258,5 @@ def igd_summary2csv():
 
 if __name__ == "__main__":
     hv_summary2csv()
+    # hv_medianplot()
     print(0)
