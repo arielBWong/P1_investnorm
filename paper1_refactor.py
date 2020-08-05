@@ -339,6 +339,9 @@ def nd2csv(train_y, target_problem, seed_index, method_selection, search_ideal):
     ndfront = train_y[ndindex, :]
     np.savetxt(savename, ndfront, delimiter=',')
 
+    savename = savefolder + '\\trainy_seed_' + str(seed_index) + '.csv'
+    np.savetxt(savename, train_y, delimiter=',')
+
 def pfnd2csv(pf_nd, target_problem, seed_index, method_selection, search_ideal):
     path = os.getcwd()
     path = path + '\paper1_results'
@@ -530,8 +533,11 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
-    number_of_initial_samples = 11 * n_vals - 1
-    # number_of_initial_samples = 200
+    if 'WFG' in target_problem.name():
+        number_of_initial_samples = 200
+    else:
+        number_of_initial_samples = 11 * n_vals - 1
+
     n_iter = max_eval - number_of_initial_samples  # stopping criterion set
 
     pf_nd = []  # analysis parameter, due to search_ideal, size is un-determined
@@ -652,13 +658,18 @@ def single_run():
 
 def para_run():
     import json
-    problems_json = [# 'dtlz_problems_hv.json'
-                     'p/wfg_problems_hv.json',
+    problems_json = ['p/wfg_problems_hv.json',
                      'p/wfg_problems_hvnd.json',
                      'p/wfg_problems_hvndr.json',
+                     'p/dtlz_problems_hv.json',
+                     'p/dtlz_problems_hvnd.json',
+                     'p/dtlz_problems_hvndr.json',
+                      'p/zdt_problems_hv.json',
+                      'p/zdt_problems_hvnd.json',
+                      'p/zdt_problems_hvndr.json',
                      ]
     args = []
-    seedmax = 29
+    seedmax = 11
     for problem_setting in problems_json:
         with open(problem_setting, 'r') as data_file:
             hyp = json.load(data_file)
