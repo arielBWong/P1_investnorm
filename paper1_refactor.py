@@ -207,7 +207,7 @@ def lexsort_with_certain_row(f_matrix, target_row_index):
     f_min = np.min(f_matrix, axis=1)
     f_min = np.atleast_2d(f_min).reshape(-1, 1)
     # according to np.lexsort, put row with largest min values last row
-    # -- this following sort is useless
+    # -- this following sort is useless, can just go straight in 3d
     f_min_count = np.count_nonzero(f_matrix == f_min, axis=1)
     f_min_accending_index = np.argsort(f_min_count)
     # adjust last_f_pop
@@ -396,7 +396,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     # ---------- visual check
     ax.cla()
     ax.scatter(true_pf[:, 0], true_pf[:, 1], c='green', s=0.2)
-    ax.scatter(train_y[:, 0], train_y[:, 1], c='blue', s=0.2)
+    # ax.scatter(train_y[:, 0], train_y[:, 1], c='blue', s=0.2)
     nd_front = get_ndfront(norm_train_y)
     nd_frontdn = denormalize(nd_front, train_y)
     ax.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], c='blue')
@@ -406,8 +406,8 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     ref_dn = denormalize(ref, train_y)
     ax.scatter(ref_dn[0], ref_dn[1], c='red', marker='D')
 
-    plt.legend(['PF', 'archive A', 'nd front', 'ref point'])
-    # plt.legend(['PF',  'nd front', 'ref point'])
+    # plt.legend(['PF', 'archive A', 'nd front', 'ref point'])
+    plt.legend(['PF',  'nd front', 'ref point'])
     # -----------visual check--
 
     if idealsearch:
@@ -420,8 +420,8 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
         pred_y = np.hstack((pred_y1, pred_y2))
         pred_y = denormalize(pred_y, train_y)
         ax.scatter(pred_y[:, 0], pred_y[:, 1], c='black', marker=7, s=100)
-        # plt.legend(['PF','nd front', 'ref point', 'ideal search', 'estimates'])
-        plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'])
+        plt.legend(['PF','nd front', 'ref point', 'ideal search', 'estimates'])
+        # plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'])
 
 
     plt.title(problem.name())
@@ -469,7 +469,7 @@ def plot_process3d(ax, problem, train_y, norm_train_y, denormalize, idealsearch,
     # ---------- visual check
     ax.cla()
     ax.scatter(true_pf[:, 0], true_pf[:, 1], true_pf[:, 2], c='green')
-    ax.scatter(train_y[:, 0], train_y[:, 1], train_y[:, 2], c='blue', s=0.2)
+    # ax.scatter(train_y[:, 0], train_y[:, 1], train_y[:, 2], c='blue', s=0.2)
     nd_front = get_ndfront(norm_train_y)
     nd_frontdn = denormalize(nd_front, train_y)
     ax.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], nd_frontdn[:, 2], c='blue')
@@ -479,8 +479,8 @@ def plot_process3d(ax, problem, train_y, norm_train_y, denormalize, idealsearch,
     ref_dn = denormalize(ref, train_y)
     ax.scatter(ref_dn[0], ref_dn[1], ref_dn[2], c='red', marker='D')
 
-    plt.legend(['PF', 'archive A', 'nd front', 'ref point'])
-    # plt.legend(['PF',  'nd front', 'ref point'])
+    # plt.legend(['PF', 'archive A', 'nd front', 'ref point'])
+    plt.legend(['PF',  'nd front', 'ref point'])
     # -----------visual check--
 
     if idealsearch:
@@ -494,8 +494,8 @@ def plot_process3d(ax, problem, train_y, norm_train_y, denormalize, idealsearch,
         pred_y = np.hstack((pred_y1, pred_y2, pred_y3))
         pred_y = denormalize(pred_y, train_y)
         ax.scatter(pred_y[:, 0], pred_y[:, 1], pred_y[:, 2], c='black', marker=7, s=100)
-        # plt.legend(['PF','nd front', 'ref point', 'ideal search', 'estimates'])
-        plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'])
+        plt.legend(['PF','nd front', 'ref point', 'ideal search', 'estimates'])
+        # plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'])
 
     plt.title(problem.name())
 
@@ -634,7 +634,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
-        visualplot = True
+        visualplot =False
         # ax = None
 
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
@@ -651,7 +651,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         pred_y2, _ = krg[1].predict(next_x)
         pred_y = denormalize(np.hstack((pred_y1, pred_y2)), train_y)
         ax.scatter(pred_y[:, 0], pred_y[:, 1], marker=7, c='black')
-        plt.pause(1)
+        plt.pause(2)
         #------------visual check
 
         # add new proposed data
@@ -717,9 +717,9 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
     print('Problem %s, seed %d' % (target_problem.name(), seed_index))
     hv_ref = [1.1, 1.1, 1.1]
 
-    plt.ion()
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    # plt.ion()
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -749,7 +749,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
         train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
-        plot_process3d(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
+        # plot_process3d(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
 
     # (4) enter iteration, propose next x till number of iteration is met
     ego_eval = EI.ego_fit(target_problem.n_var, target_problem.n_obj, target_problem.n_constr, target_problem.xu,
@@ -760,9 +760,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
         # (4-1) de search for proposing next x point
         # visual check
 
-        plot_process3d(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
-
-        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
+        # plot_process3d(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
 
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
@@ -775,7 +773,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
         visualplot = False
-        # ax = None
+        ax = None
 
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
@@ -786,6 +784,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
         # --------visual check
+        '''
         ax.scatter(next_y[:, 0], next_y[:, 1],next_y[:, 2], c='orange', marker='X')
         pred_y1, _ = krg[0].predict(next_x)
         pred_y2, _ = krg[1].predict(next_x)
@@ -793,6 +792,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
         pred_y = denormalize(np.hstack((pred_y1, pred_y2, pred_y2)), train_y)
         ax.scatter(pred_y[:, 0], pred_y[:, 1], pred_y[:, 2], marker=7, c='black')
         plt.pause(1)
+        '''
         # ------------visual check
 
         # add new proposed data
@@ -818,7 +818,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
                 pf_hv, nd_hv = hv_converge(target_problem, train_y)
                 pf_nd = np.append(pf_nd, pf_hv)
                 pf_nd = np.append(pf_nd, nd_hv)
-                plot_process3d(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
+                # plot_process3d(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
 
         # retrain krg, normalization needed
         norm_train_y = norm_scheme(train_y)
@@ -886,28 +886,56 @@ def para_run():
     return None
 
 def plot_run():
-    target_problems = ["ZDT3(n_var=6)", "DTLZ2(n_var=6, n_obj=2)", "DTLZs.DTLZ7(n_var=6, n_obj=2)", "WFG.WFG_2(n_var=6, n_obj=2, K=4)"]
-    method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
-    search_ideal = 0
-    max_eval = 250
-    num_pop = 100
-    num_gen = 100
-    seed_index = 1
-    paper1_mainscript(seed_index, target_problems[3], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
-
-def p3d_run():
-    target_problems = ["DTLZ2(n_var=6, n_obj=3)"]
+    target_problems = ["ZDT3(n_var=6)", "DTLZ1(n_var=6, n_obj=2)", "DTLZs.DTLZ7(n_var=6, n_obj=2)", "WFG.WFG_2(n_var=6, n_obj=2, K=4)"]
     method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
     search_ideal = 1
-    max_eval = 200
+    max_eval = 100
+    num_pop = 100
+    num_gen = 100
+    seed_index = 0
+    paper1_mainscript(seed_index, target_problems[1], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
+
+def p3d_run():
+    target_problems = ["DTLZ3(n_var=6, n_obj=3)"]
+    method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
+    search_ideal = 1
+    max_eval = 100
     num_pop = 100
     num_gen = 100
     seed_index = 1
     paper1_mainscript3d(seed_index, target_problems[0], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
 
 
+def p3d_pararun():
+    target_problems = ["DTLZ1(n_var=6, n_obj=3)", "DTLZ2(n_var=6, n_obj=3)", "DTLZ3(n_var=6, n_obj=3)"]
+    method_selections = ['normalization_with_self', 'normalization_with_nd']
+    search_ideal = 0
+    max_eval = 200
+    num_pop = 100
+    num_gen = 100
+    seedmax = 11
+
+
+    args = []
+
+    for problem in target_problems:
+        for method_selection in method_selections:
+            for seed in range(seedmax):
+                args.append((seed, problem, method_selection, search_ideal, max_eval, num_pop, num_gen))
+
+    search_ideal = 1
+    for problem in target_problems:
+        for seed in range(seedmax):
+            args.append((seed, problem, method_selections[1], search_ideal, max_eval, num_pop, num_gen))
+
+    num_workers = 6
+    pool = mp.Pool(processes=num_workers)
+    pool.starmap(paper1_mainscript3d, ([arg for arg in args]))
+
+
 if __name__ == "__main__":
-    p3d_run()
+    p3d_pararun()
+    # p3d_run()
     # plot_run()
 
     # single_run()
