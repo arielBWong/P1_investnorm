@@ -913,7 +913,7 @@ def p3d_pararun():
     max_eval = 200
     num_pop = 100
     num_gen = 100
-    seedmax = 11
+    seedmax = 29
 
 
     args = []
@@ -928,7 +928,7 @@ def p3d_pararun():
         for seed in range(seedmax):
             args.append((seed, problem, method_selections[1], search_ideal, max_eval, num_pop, num_gen))
 
-    num_workers = 6
+    num_workers = 14
     pool = mp.Pool(processes=num_workers)
     pool.starmap(paper1_mainscript3d, ([arg for arg in args]))
 
