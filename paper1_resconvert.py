@@ -24,8 +24,55 @@ from scipy.optimize import differential_evolution
 from scipy.optimize import Bounds
 
 def hv_convergeplot():
+    '''this function read a record plot hv '''
+    import json
+    problems_json = 'p/resconvert.json'
 
-    print(0)
+    # (1) load parameter settings
+    with open(problems_json, 'r') as data_file:
+        hyp = json.load(data_file)
+
+    target_problems = hyp['MO_target_problems']
+
+    method_selection = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
+    problem = eval(target_problems[2])
+    seed = [27, 24, 19]
+
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    m = ['normalization f', 'normalization nd', 'nd and ideal search']
+
+    style = ['-', 'dotted', '--']
+    plt.ion()
+    fig, ax = plt.subplots()
+    # algs = {}
+    for i in range(3):
+        savename = path + '\\' + problem.name() + '_' + method_selection[i] + \
+                 '\\hvconvg_seed_' + str(seed[i]) + '.csv'
+
+        hvcong = np.loadtxt(savename, delimiter=',')
+        # algs[str(i)] = hvcong
+        ax.plot(hvcong[:, 1], linestyle=style[i])
+    ax.legend(m)
+    ax.set_xlabel('iterations')
+    ax.set_ylabel('normalized hv')
+    plt.title(problem.name())
+    plt.pause(1)
+
+
+    path = os.getcwd()
+    savefolder = path + '\\paper1_results\\process_plot'
+    if not os.path.exists(savefolder):
+        os.mkdir(savefolder)
+
+    savename1 = savefolder + '\\' + problem.name() + '_hvconverge.eps'
+    savename2 = savefolder + '\\' + problem.name() + '_hvconverge.png'
+    plt.savefig(savename1, format='eps')
+    plt.savefig(savename2)
+
+    plt.ioff()
+
+
 def get_paretofront(problem, n):
     from pymop.factory import get_uniform_weights
     if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1':
@@ -263,6 +310,7 @@ def igd_summary2csv():
 
 
 if __name__ == "__main__":
-    hv_summary2csv()
+    hv_convergeplot()
+    # hv_summary2csv()
     # hv_medianplot()
     print(0)

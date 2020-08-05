@@ -267,7 +267,7 @@ def visualize_firstgenlandscape(pop_x, **kwargs):
     # plot pareto front
     ax.scatter(true_pf[:, 0], true_pf[:, 1], c='green', s=1)
     # plot training data of surrogate
-    ax.scatter(norm_orig[:, 0], norm_orig[:, 1], c='black')
+    ax.scatter(norm_orig[:, 0], norm_orig[:, 1], c='black', s=1)
     nd_front = get_ndfront(norm_orig)
     # plot nd front
     ax.scatter(nd_front[:, 0], nd_front[:, 1], c='blue')
@@ -280,7 +280,7 @@ def visualize_firstgenlandscape(pop_x, **kwargs):
     ax.set_xlabel('f1')
     ax.set_ylabel('f2')
     plt.colorbar(ms, ax=ax)
-    plt.legend(['PF', 'Init data', 'Init nd', 'Ref'])
+    plt.legend(['PF', 'Archive', 'Init nd', 'Ref'])
     plt.title(real_prob.name())
 
     # plt.pause(5)
@@ -300,6 +300,7 @@ def visualize_firstgenlandscape(pop_x, **kwargs):
     plt.pause(1)
     plt.close()
     plt.ioff()
+    a =0
 
 
 
@@ -409,8 +410,8 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, visflag, 
         if visflag:
             # visflag and ax come in pairs
             visualize_egobelieverde(ax, pop_x, **kwargs)
-            # if iter == 1:
-                # visualize_firstgenlandscape(pop_x, **kwargs)
+            if iter == 1:
+                visualize_firstgenlandscape(pop_x, **kwargs)
 
 
 
