@@ -170,7 +170,13 @@ def hv_medianplot():
     plt.pause(2)
     plt.close()
 
-
+def get_paretofront(problem, n):
+    from pymop.factory import get_uniform_weights
+    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1':
+        ref_dir = get_uniform_weights(n, 2)
+        return problem.pareto_front(ref_dir)
+    else:
+        return problem.pareto_front(n_pareto_points=n)
 def hv_summary2csv():
     '''
     this function reads parameter files to track experimental results
@@ -199,7 +205,7 @@ def hv_summary2csv():
     # plt.ion()
     for problem_i, problem in enumerate(target_problems):
         problem = eval(problem)
-        pf = problem.pareto_front(n_pareto_points=100)
+        pf = get_paretofront(problem, 100)
         nadir = np.max(pf, axis=0)
         ref = nadir * 1.1
         for j in range(num_methods):
