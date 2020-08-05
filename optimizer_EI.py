@@ -409,8 +409,8 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, visflag, 
         if visflag:
             # visflag and ax come in pairs
             visualize_egobelieverde(ax, pop_x, **kwargs)
-            if iter == 1:
-                visualize_firstgenlandscape(pop_x, **kwargs)
+            # if iter == 1:
+                # visualize_firstgenlandscape(pop_x, **kwargs)
 
 
 

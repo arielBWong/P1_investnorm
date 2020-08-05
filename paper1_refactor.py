@@ -406,7 +406,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch):
     # plot reference point
     ref = [1.1] * train_y.shape[1]
     ref_dn = denormalize(ref, train_y)
-    ax.scatter(ref_dn[0], ref_dn[1], c='black', marker='D')
+    ax.scatter(ref_dn[0], ref_dn[1], c='red', marker='D')
 
     plt.legend(['PF', 'nd front', 'ref point'])
     # -----------visual check
@@ -447,6 +447,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch):
     ax.set_ylabel('f2')
 
     # -----
+    '''
     path = os.getcwd()
     savefolder = path + '\\paper1_results\\process_plot'
     if not os.path.exists(savefolder):
@@ -456,8 +457,9 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch):
     savename2 = savefolder + '\\' + problem.name() + '_process_ndr_step1.png'
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
+    '''
 
-    a = 0
+
 
 
 
@@ -528,8 +530,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
-    # number_of_initial_samples = 11 * n_vals - 1
-    number_of_initial_samples = 200
+    number_of_initial_samples = 11 * n_vals - 1
+    # number_of_initial_samples = 200
     n_iter = max_eval - number_of_initial_samples  # stopping criterion set
 
     pf_nd = []  # analysis parameter, due to search_ideal, size is un-determined
@@ -585,7 +587,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
         #--------visual check
-        ax.scatter(next_y[:, 0], next_y[:, 1], c='green')
+        ax.scatter(next_y[:, 0], next_y[:, 1], c='orange', marker='X')
         plt.pause(2)
         #------------visual check
 
@@ -597,6 +599,12 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         pf_hv, nd_hv = hv_converge(target_problem, train_y)
         pf_nd = np.append(pf_nd, pf_hv)
         pf_nd = np.append(pf_nd, nd_hv)
+
+        # count evaluation and break
+        if train_y.shape[0] >= max_eval:
+            train_x = train_x[0:max_eval, :]
+            train_y = train_y[0:max_eval, :]
+
 
 
         # (4-2) according to configuration determine whether to estimate new point
@@ -671,10 +679,10 @@ def para_run():
     return None
 
 def plot_run():
-    target_problems = ["WFG.WFG_4(n_var=6, n_obj=2, K=4)"]
+    target_problems = ["DTLZs.DTLZ5(n_var=6, n_obj=2)", "WFG.WFG_4(n_var=6, n_obj=2, K=4)"]
     method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
-    search_ideal = 1
-    max_eval = 250
+    search_ideal = 0
+    max_eval = 100
     num_pop = 100
     num_gen = 100
     seed_index = 1
