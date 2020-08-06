@@ -14,6 +14,7 @@ import time
 from surrogate_problems import branin, GPc, Gomez3, Mystery, Reverse_Mystery, SHCBc, HS100, Haupt_schewefel, \
     MO_linearTest, single_krg_optim, WFG, iDTLZ, DTLZs, ego_fitness, EI
 from matplotlib.lines import Line2D
+import scipy
 
 import os
 import copy
@@ -502,6 +503,33 @@ def trainy_summary2csv():
 
     np.savetxt(savestat, hv_stat, delimiter=',')
 
+    hv_ttest = np.zeros((2, num_pro))
+    for i in range(num_pro):
+        a = hv_raw[:, i * 3 + 1]
+        b = hv_raw[:, i * 3 + 2]
+        hv_ttest[0, i], hv_ttest[1, i] = scipy.stats.ttest_ind(a, b)
+
+    path = os.getcwd()
+    path = path + '\\paper1_results\\'
+    savefile = path + 'paper1_resconvert\\results_ttest.csv'
+    with open(savefile, 'w') as f:
+        # write header
+        f.write(',')
+        for i in range(num_pro):
+
+                m = eval(target_problems[i]).name()
+                f.write(m)
+                f.write(',')
+        f.write('\n')
+        f.write('t-stat,')
+        for i in range(num_pro):
+            f.write(str(hv_ttest[0, i]))
+            f.write(',')
+        f.write('\n p-stat,')
+        for i in range(num_pro):
+            f.write(str(hv_ttest[1, i]))
+            f.write(',')
+
     print(0)
 
 
@@ -569,4 +597,5 @@ if __name__ == "__main__":
     #     hv_convergeplot(k)
     # hv_summary2csv()
     # hv_medianplot()
-    plot3dresults()
+    # plot3dresults()
+    trainy_summary2csv()
