@@ -667,6 +667,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         if train_y.shape[0] >= max_eval:
             train_x = train_x[0:max_eval, :]
             train_y = train_y[0:max_eval, :]
+            break
 
 
 
@@ -892,8 +893,8 @@ def plot_run():
     max_eval = 100
     num_pop = 100
     num_gen = 100
-    seed_index = 0
-    paper1_mainscript(seed_index, target_problems[1], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
+    seed_index = 1
+    paper1_mainscript(seed_index, target_problems[0], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
 
 def p3d_run():
     target_problems = ["DTLZ3(n_var=6, n_obj=3)"]
@@ -910,7 +911,7 @@ def p3d_pararun():
     target_problems = ["DTLZ1(n_var=6, n_obj=3)", "DTLZ2(n_var=6, n_obj=3)", "DTLZ3(n_var=6, n_obj=3)"]
     method_selections = ['normalization_with_self', 'normalization_with_nd']
     search_ideal = 0
-    max_eval = 200
+    max_eval = 100
     num_pop = 100
     num_gen = 100
     seedmax = 29
@@ -934,9 +935,9 @@ def p3d_pararun():
 
 
 if __name__ == "__main__":
-    p3d_pararun()
+    # p3d_pararun()
     # p3d_run()
-    # plot_run()
+    plot_run()
 
     # single_run()
     # para_run()

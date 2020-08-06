@@ -23,8 +23,15 @@ import EI_problem
 from scipy.optimize import differential_evolution
 from scipy.optimize import Bounds
 
-def hv_convergeplot():
-    '''this function read a record plot hv '''
+def hv_convergeplot(k):
+    '''this function needs specify a problem internally
+    and plot its hv convergence
+    find the following line to decide which problem to process
+    problem = eval(target_problems[2])
+    ** warning: dependent on running of hv_summary2csv or trainy_summary2csv
+    ** to create seed selection
+    *** or plot same seed change the following line
+    '''
     import json
     problems_json = 'p/resconvert.json'
 
@@ -35,27 +42,57 @@ def hv_convergeplot():
     target_problems = hyp['MO_target_problems']
 
     method_selection = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
-    problem = eval(target_problems[2])
-    seed = [27, 24, 19]
+    problem = eval(target_problems[k])
+    pf = get_paretofront(problem, 100)
+    nadir = np.max(pf, axis=0)
+    ref = nadir * 1.1
+
+    n_vals = problem.n_var
+    if 'ZDT' in problem.name():
+        number_of_initial_samples = 11 * n_vals - 1
+        max_eval = 100
+    if 'WFG' in problem.name():
+        max_eval = 250
+        number_of_initial_samples = 200
+
+    num_plot = max_eval - number_of_initial_samples
+    hvplot = np.zeros((3, num_plot))
+
+
+
+    path = os.getcwd()
+    path = path + '\\paper1_results\\paper1_resconvert\\median_id.joblib'
+    median_id = load(path)
+    seed = [int(median_id[problem.name() + '_' + method_selection[0]]),
+            int(median_id[problem.name() + '_' + method_selection[1]]),
+            int(median_id[problem.name() + '_' + method_selection[2]])]
+    seed = [1] * 3
 
     path = os.getcwd()
     path = path + '\paper1_results'
-    m = ['normalization f', 'normalization nd', 'nd and ideal search']
+    for m in range(3):
+        savefolder = path + '\\' + problem.name() + '_' + method_selection[m]
+        savename = savefolder + '\\trainy_seed_' + str(seed[m]) + '.csv'
+        print(savename)
+        trainy = np.loadtxt(savename, delimiter=',')
+        trainy = np.atleast_2d(trainy)
+        for i in range(number_of_initial_samples, max_eval):
+            f = trainy[0:i, :]
+            hvplot[m, i-number_of_initial_samples] = get_f2hv(f, ref)
 
-    style = ['-', 'dotted', '--']
+
+    # m = ['normalization f', 'normalization nd', 'nd and ideal search']
+    m = ['normalization nd', 'normalization nd and ideal search']
+
+    style = ['dotted', '--']
     plt.ion()
     fig, ax = plt.subplots()
     # algs = {}
-    for i in range(3):
-        savename = path + '\\' + problem.name() + '_' + method_selection[i] + \
-                 '\\hvconvg_seed_' + str(seed[i]) + '.csv'
-
-        hvcong = np.loadtxt(savename, delimiter=',')
-        # algs[str(i)] = hvcong
-        ax.plot(hvcong[:, 1], linestyle=style[i])
+    for i in range(2):
+        ax.plot(hvplot[i+1, :], linestyle=style[i])
     ax.legend(m)
     ax.set_xlabel('iterations')
-    ax.set_ylabel('normalized hv')
+    ax.set_ylabel('Hypervolume')
     plt.title(problem.name())
     plt.pause(1)
 
@@ -295,11 +332,143 @@ def hv_summary2csv():
     target_problems = hyp['MO_target_problems']
     mat2csv(target_problems, hv_raw, hv_stat, methods, seedmax)
 
+    #--- save
+    median_id = {}
+    for problem_i, problem in enumerate(target_problems):
+        problem = eval(problem)
+        for j in range(num_methods):
+            method_selection = methods[j]
+            name = problem.name() + '_' + method_selection
+            median_id[name] = hv_stat[3, problem_i * 3 + j]
+    saveName = path + '\\' + 'median_id.joblib'
+    dump(median_id, saveName)
+
+
+
+
     savestat = path + '\\hvstat.csv'
 
     np.savetxt(savestat, hv_stat, delimiter=',')
 
     print(0)
+
+
+def get_ndfront(train_y):
+    '''
+       :param train_y: np.2d
+       :return: nd front points extracted from train_y
+       '''
+    ndf, dl, dc, ndr = pg.fast_non_dominated_sorting(train_y)
+    ndf = list(ndf)
+    ndf_index = ndf[0]
+    nd_front = train_y[ndf_index, :]
+    return nd_front
+
+def get_f2hv(f, ref):
+    '''
+    this function takes training data as input calculate hv with ref
+    :param f:
+    :param ref:
+    :return: one value
+    '''
+    nd_front = get_ndfront(f)
+    hv = get_hv(nd_front, ref)
+    return hv
+
+def trainy_summary2csv():
+    '''
+        this function reads parameter files to track experimental results
+        read saved training data  from each seed, and cut the right number of evaluation
+        calculate pareto front to generated reference point
+        use this pf reference to calculate hv for each seed
+        :return: two csv files (1) raw data hv collection, (2) mean median csv collection
+        '''
+    import json
+
+    problems_json = 'p/resconvert.json'
+
+    # (1) load parameter settings
+    with open(problems_json, 'r') as data_file:
+        hyp = json.load(data_file)
+
+    target_problems = hyp['MO_target_problems']
+    # target_problems = target_problems[4:5]
+    seedmax = 29
+
+    num_pro = len(target_problems)
+    methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
+    num_methods = len(methods)
+    hv_raw = np.zeros((seedmax, num_pro * 3))
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    # plt.ion()
+    for problem_i, problem in enumerate(target_problems):
+        problem = eval(problem)
+        pf = get_paretofront(problem, 100)
+        nadir = np.max(pf, axis=0)
+        ref = nadir * 1.1
+        if 'ZDT' in problem.name():
+            evalnum = 100
+        if 'WFG' in problem.name():
+            evalnum = 250
+        for j in range(num_methods):
+            method_selection = methods[j]
+            savefolder = path + '\\' + problem.name() + '_' + method_selection
+            for seed in range(seedmax):
+                savename = savefolder + '\\trainy_seed_' + str(seed) + '.csv'
+                print(savename)
+                trainy = np.loadtxt(savename, delimiter=',')
+                trainy = np.atleast_2d(trainy)
+                '''
+                fig, ax = plt.subplots()
+                ax.scatter(pf[:, 0], pf[:, 1])
+                ax.scatter(nd_front[:, 0], nd_front[:, 1])
+                plt.title(problem.name())
+                plt.show()
+                plt.pause(0.5)
+                plt.close()
+                '''
+                # fix bug
+                trainy = trainy[0:evalnum, :]
+                hv = get_f2hv(trainy, ref)
+                print(hv)
+                hv_raw[seed, problem_i * num_methods + j] = hv
+    # (2) mean median collection
+    hv_stat = np.zeros((4, num_pro * 3))
+    for i in range(num_pro * 3):
+        hv_stat[0, i] = np.mean(hv_raw[:, i])
+        hv_stat[1, i] = np.std(hv_raw[:, i])
+        sortlist = np.argsort(hv_raw[:, i])
+        hv_stat[2, i] = hv_raw[:, i][sortlist[int(29 / 2)]]
+        hv_stat[3, i] = sortlist[int(29 / 2)]
+
+    plt.ioff()
+    path = path + '\paper1_resconvert'
+    if not os.path.exists(path):
+        os.mkdir(path)
+    saveraw = path + '\\hvraw.csv'
+    np.savetxt(saveraw, hv_raw, delimiter=',')
+
+    target_problems = hyp['MO_target_problems']
+    mat2csv(target_problems, hv_raw, hv_stat, methods, seedmax)
+
+    # --- save
+    median_id = {}
+    for problem_i, problem in enumerate(target_problems):
+        problem = eval(problem)
+        for j in range(num_methods):
+            method_selection = methods[j]
+            name = problem.name() + '_' + method_selection
+            median_id[name] = hv_stat[3, problem_i * 3 + j]
+    saveName = path + '\\' + 'median_id.joblib'
+    dump(median_id, saveName)
+
+    savestat = path + '\\hvstat.csv'
+
+    np.savetxt(savestat, hv_stat, delimiter=',')
+
+    print(0)
+
 
 def igd_summary2csv():
     '''
@@ -310,7 +479,8 @@ def igd_summary2csv():
 
 
 if __name__ == "__main__":
-    hv_convergeplot()
+    # trainy_summary2csv()
+    for k in range(0,12):
+        hv_convergeplot(k)
     # hv_summary2csv()
     # hv_medianplot()
-    print(0)
