@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import optimizer_EI
 from pymop import ZDT1, ZDT2, ZDT3, ZDT4, ZDT6, \
-    DTLZ1, DTLZ2, \
+    DTLZ1, DTLZ2,DTLZ3, \
     BNH, Carside, Kursawe, OSY, Truss2D, WeldedBeam, TNK
 from EI_krg import acqusition_function, close_adjustment
 from sklearn.utils.validation import check_array
@@ -110,14 +110,6 @@ def hv_convergeplot(k):
     plt.ioff()
 
 
-def get_paretofront(problem, n):
-    from pymop.factory import get_uniform_weights
-    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1':
-        ref_dir = get_uniform_weights(n, 2)
-        return problem.pareto_front(ref_dir)
-    else:
-        return problem.pareto_front(n_pareto_points=n)
-
 def get_hv(front, ref):
     '''
     this function calcuate hv with respect to ref
@@ -194,6 +186,51 @@ def mat2csv(target_problems, matrix, matrix_sts, methods, seedmax):
                 f.write(',')
             f.write('\n')
 
+def plot_process3d(problem, train_y, method,seed):
+    plt.ion()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    true_pf = get_paretofront(problem, 1000)
+    nadir = np.max(true_pf, axis=0)
+    ref = nadir * 1.1
+
+    # ---------- visual check
+    ax.cla()
+    ax.scatter(true_pf[:, 0], true_pf[:, 1], true_pf[:, 2], c='green', alpha=0.2)
+    # ax.scatter(train_y[:, 0], train_y[:, 1], train_y[:, 2], c='blue', s=0.2)
+
+    nd_frontdn = get_ndfront(train_y)
+    ax.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], nd_frontdn[:, 2], c='blue')
+
+    # plot reference point
+    ref_dn = ref
+    ax.scatter(ref_dn[0], ref_dn[1], ref_dn[2], c='red', marker='D')
+
+    # plt.legend(['PF', 'archive A', 'nd front', 'ref point'])
+    plt.legend(['PF',  'nd front', 'ref point'])
+    # -----------visual check--
+
+    plt.title(problem.name())
+
+    ax.set_xlabel('f1')
+    ax.set_ylabel('f2')
+    ax.set_zlabel('f3')
+    plt.show()
+    a = 0
+
+    # -----
+
+    path = os.getcwd()
+    savefolder = path + '\\paper1_results\\process_plot'
+    if not os.path.exists(savefolder):
+        os.mkdir(savefolder)
+
+    savename1 = savefolder + '\\' + problem.name() + '_' + method + '_'+ str(seed)+ '.eps'
+    savename2 = savefolder + '\\' + problem.name() + '_' + method +'_'+ str(seed)+  '.png'
+    plt.savefig(savename1, format='eps')
+    plt.savefig(savename2)
+
 
 def hv_medianplot():
     '''
@@ -256,11 +293,13 @@ def hv_medianplot():
 
 def get_paretofront(problem, n):
     from pymop.factory import get_uniform_weights
-    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1':
-        ref_dir = get_uniform_weights(n, 2)
+    n_obj = problem.n_obj
+    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1' or problem.name() == 'DTLZ3':
+        ref_dir = get_uniform_weights(n, n_obj)
         return problem.pareto_front(ref_dir)
     else:
         return problem.pareto_front(n_pareto_points=n)
+
 def hv_summary2csv():
     '''
     this function reads parameter files to track experimental results
@@ -270,7 +309,7 @@ def hv_summary2csv():
     '''
     import json
 
-    problems_json = 'p/resconvert.json'
+    problems_json = 'p/resconvert_dtlz.json'
 
     # (1) load parameter settings
     with open(problems_json, 'r') as data_file:
@@ -326,7 +365,7 @@ def hv_summary2csv():
     path = path + '\paper1_resconvert'
     if not os.path.exists(path):
         os.mkdir(path)
-    saveraw = path + '\\hvraw.csv'
+    saveraw = path + '\\hvrawdltz.csv'
     np.savetxt(saveraw, hv_raw, delimiter=',')
 
     target_problems = hyp['MO_target_problems']
@@ -340,18 +379,14 @@ def hv_summary2csv():
             method_selection = methods[j]
             name = problem.name() + '_' + method_selection
             median_id[name] = hv_stat[3, problem_i * 3 + j]
-    saveName = path + '\\' + 'median_id.joblib'
+    saveName = path + '\\' + 'median_id_dtlz.joblib'
     dump(median_id, saveName)
 
-
-
-
-    savestat = path + '\\hvstat.csv'
+    savestat = path + '\\hvstatdtlz.csv'
 
     np.savetxt(savestat, hv_stat, delimiter=',')
 
     print(0)
-
 
 def get_ndfront(train_y):
     '''
@@ -477,10 +512,61 @@ def igd_summary2csv():
     :return:
     '''
 
+def plot3dresults():
+    import json
+
+    problems_json = 'p/resconvert_dtlz.json'
+
+    # (1) load parameter settings
+    with open(problems_json, 'r') as data_file:
+        hyp = json.load(data_file)
+
+    target_problems = hyp['MO_target_problems']
+    # target_problems = target_problems[4:5]
+
+
+    num_pro = len(target_problems)
+    methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
+    num_methods = len(methods)
+
+    prob_id = 2
+    med_id = 2
+    seed = 4
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    # plt.ion()
+    problem = target_problems[prob_id]
+    problem = eval(problem)
+    pf = get_paretofront(problem, 100)
+    nadir = np.max(pf, axis=0)
+    ref = nadir * 1.1
+
+    if 'ZDT' in problem.name():
+        evalnum = 100
+    if 'WFG' in problem.name():
+        evalnum = 250
+    if 'DTLZ' in problem.name():
+        evalnum = 200
+
+
+    method_selection = methods[med_id]
+    savefolder = path + '\\' + problem.name() + '_' + method_selection
+
+    savename = savefolder + '\\trainy_seed_' + str(seed) + '.csv'
+    print(savename)
+    trainy = np.loadtxt(savename, delimiter=',')
+    trainy = np.atleast_2d(trainy)
+
+    # fix bug
+    trainy = trainy[0:evalnum, :]
+    plot_process3d(problem, trainy, method_selection, seed)
+
+
 
 if __name__ == "__main__":
     # trainy_summary2csv()
-    for k in range(0,12):
-        hv_convergeplot(k)
+    # for k in range(0,12):
+    #     hv_convergeplot(k)
     # hv_summary2csv()
     # hv_medianplot()
+    plot3dresults()
