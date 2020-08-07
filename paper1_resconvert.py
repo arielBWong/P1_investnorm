@@ -111,6 +111,103 @@ def hv_convergeplot(k):
     plt.ioff()
 
 
+def hvconverge_averageplot():
+    '''
+            this function reads parameter files to track experimental results
+            read saved training data  from each seed, and cut the right number of evaluation
+            calculate pareto front to generated reference point
+            use this pf reference to calculate hv for each seed
+            :return: two csv files (1) raw data hv collection, (2) mean median csv collection
+            '''
+    import json
+
+    problems_json = 'p/resconvert.json'
+
+    # (1) load parameter settings
+    with open(problems_json, 'r') as data_file:
+        hyp = json.load(data_file)
+
+    target_problems = hyp['MO_target_problems']
+    # target_problems = target_problems[4:5]
+    seedmax = 29
+
+    num_pro = len(target_problems)
+    methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
+    num_methods = len(methods)
+
+    path = os.getcwd()
+    path = path + '\paper1_results'
+    plt.ion()
+    for problem_i, problem in enumerate(target_problems):
+
+        # for each problem create three plots
+
+        problem = eval(problem)
+        pf = get_paretofront(problem, 100)
+        nadir = np.max(pf, axis=0)
+        ref = nadir * 1.1
+        if 'ZDT' in problem.name() or 'DTLZ' in problem.name():
+            evalnum = 100
+            initsize = problem.n_var * 11 - 1
+        if 'WFG' in problem.name():
+            evalnum = 250
+            initsize = 200
+        if 'DTLZ' in problem.name():
+            evalnum = 100
+            initsize = problem.n_var * 11 - 1
+
+        # each problem calculate mean and variance
+        fig, ax = plt.subplots()
+
+        for j in range(num_methods):
+            method_selection = methods[j]
+            savefolder = path + '\\' + problem.name() + '_' + method_selection
+
+            # create raw data for each method
+            rawhv = np.zeros((seedmax, evalnum -initsize))
+            for seed in range(seedmax):
+                savename = savefolder + '\\hvconvg_seed_' + str(seed) + '.csv'
+                print(savename)
+                hv = np.loadtxt(savename, delimiter=',')
+                hv = np.atleast_2d(hv)
+
+                # fix bug
+                hv = hv[0:evalnum -initsize, 1]
+                rawhv[seed, :] = hv
+            # average over all seeds
+            mean_hv1 = np.mean(rawhv, axis=0)
+            std_hv1 = np.std(rawhv, axis=0)
+            x = range(evalnum -initsize)
+
+            ax.plot(x, mean_hv1)
+            ax.fill_between(x, mean_hv1 + std_hv1, mean_hv1-std_hv1, alpha=0.2)
+            # plt.pause(2)
+
+            a = 0
+        ax.set_xlabel('iterations')
+        ax.set_ylabel('hypervolume')
+        plt.title(problem.name())
+        plt.legend(['archive normalization', 'nd normalization', 'nd and ideal search normalization'])
+
+        # save ---
+        paths = os.getcwd()
+        savefolder = paths + '\\paper1_results\\process_plot'
+        if not os.path.exists(savefolder):
+            os.mkdir(savefolder)
+
+        savename1 = savefolder + '\\' + problem.name() + '_hvconverge.eps'
+        savename2 = savefolder + '\\' + problem.name() + '_hvconverge.png'
+        plt.savefig(savename1, format='eps')
+        plt.savefig(savename2)
+        plt.pause(2)
+        plt.close()
+
+    plt.ioff()
+    # plt.fill_between(test_X.ravel(), test_y + uncertainty, test_y - uncertainty, alpha=0.5)
+
+
+
+
 def get_hv(front, ref):
     '''
     this function calcuate hv with respect to ref
@@ -231,7 +328,6 @@ def plot_process3d(problem, train_y, method,seed):
     savename2 = savefolder + '\\' + problem.name() + '_' + method +'_'+ str(seed)+  '.png'
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
-
 
 def hv_medianplot():
     '''
@@ -411,6 +507,23 @@ def get_f2hv(f, ref):
     hv = get_hv(nd_front, ref)
     return hv
 
+def get_f2hvnorm(f, pf):
+    '''
+    this function takes training data as input calculate hv with pareto front
+    and fix the problem of hv saved over generation is nomalized
+    :param f:
+    :param ref:
+    :return: one value
+    '''
+    nd_front = get_ndfront(f)
+    pf_endmax = np.max(pf, axis=0)
+    pf_endmin = np.min(pf, axis=0)
+    pf = (pf - pf_endmin) / (pf_endmax - pf_endmin)
+    nd = (nd_front - pf_endmin) / (pf_endmax - pf_endmin)
+    ref = [1.1] * f.shape[1]
+    hv = get_hv(nd, ref)
+    return hv
+
 def trainy_summary2csv():
     '''
         this function reads parameter files to track experimental results
@@ -466,7 +579,8 @@ def trainy_summary2csv():
                 '''
                 # fix bug
                 trainy = trainy[0:evalnum, :]
-                hv = get_f2hv(trainy, ref)
+                # hv = get_f2hv(trainy, ref)
+                hv = get_f2hvnorm(trainy, pf)
                 print(hv)
                 hv_raw[seed, problem_i * num_methods + j] = hv
     # (2) mean median collection
@@ -592,10 +706,10 @@ def plot3dresults():
 
 
 if __name__ == "__main__":
-    # trainy_summary2csv()
+    trainy_summary2csv()
     # for k in range(0,12):
     #     hv_convergeplot(k)
     # hv_summary2csv()
     # hv_medianplot()
     # plot3dresults()
-    trainy_summary2csv()
+    # hvconverge_averageplot()
