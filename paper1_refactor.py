@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import optimizer_EI
 from pymop import ZDT1, ZDT2, ZDT3, ZDT4, ZDT6, \
-    DTLZ1, DTLZ2, DTLZ3, \
+    DTLZ1, DTLZ2, DTLZ3, DTLZ4, \
     BNH, Carside, Kursawe, OSY, Truss2D, WeldedBeam, TNK
 from EI_krg import acqusition_function, close_adjustment
 from sklearn.utils.validation import check_array
@@ -30,7 +30,7 @@ def init_xy(number_of_initial_samples, target_problem, seed):
     n_sur_cons = target_problem.n_constr
 
     # initial samples with hyper cube sampling
-    train_x = pyDOE.lhs(n_vals, number_of_initial_samples, criterion='maximin', iterations=1000)
+    train_x = pyDOE.lhs(n_vals, number_of_initial_samples, criterion='maximin')  #, iterations=1000)
 
     xu = np.atleast_2d(target_problem.xu).reshape(1, -1)
     xl = np.atleast_2d(target_problem.xl).reshape(1, -1)
@@ -234,7 +234,7 @@ def additional_evaluation(x_krg, train_x, train_y, problem,
     n_obj = train_y.shape[1]
 
     for i in range(n_obj):
-        x_i = np.atleast_2d(x_krg[0]).reshape(-1, n_var)
+        x_i = np.atleast_2d(x_krg[i]).reshape(-1, n_var)
         y_i = problem.evaluate(x_i, return_values_of=['F'])
         train_x = np.vstack((train_x, x_i))
         train_y = np.vstack((train_y, y_i))
@@ -384,7 +384,8 @@ def plot_initpop(train_y, target_problem, method_selection, search_ideal, seed):
 def get_paretofront(problem, n):
     from pymop.factory import get_uniform_weights
     n_obj = problem.n_obj
-    if problem.name() == 'DTLZ1' or problem.name() == 'DTLZ2' or problem.name() == 'DTLZ3':
+    if problem.name() == 'DTLZ1' or problem.name() == 'DTLZ2' or problem.name() == 'DTLZ3'\
+            or problem.name() == 'DTLZ4':
         ref_dir = get_uniform_weights(n, n_obj)
         return problem.pareto_front(ref_dir)
     else:
@@ -420,7 +421,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
         pred_y = np.hstack((pred_y1, pred_y2))
         pred_y = denormalize(pred_y, train_y)
         ax.scatter(pred_y[:, 0], pred_y[:, 1], c='black', marker=7, s=100)
-        plt.legend(['PF','nd front', 'ref point', 'ideal search', 'estimates'])
+        plt.legend(['PF', 'nd front', 'ref point', 'ideal search', 'estimates'])
         # plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'])
 
 
@@ -450,6 +451,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     ax.set_ylabel('f2')
     plt.pause(1)
 
+
     # -----
     '''
     path = os.getcwd()
@@ -457,11 +459,13 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     if not os.path.exists(savefolder):
         os.mkdir(savefolder)
 
-    savename1 = savefolder + '\\' + problem.name() + '_process_ndr_step1.eps'
-    savename2 = savefolder + '\\' + problem.name() + '_process_ndr_step1.png'
+    savename1 = savefolder + '\\' + problem.name() + '_process_nd_' + str(idealsearch) + '.eps'
+    savename2 = savefolder + '\\' + problem.name() + '_process_nd_' + str(idealsearch) + '.png'
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
+
     '''
+
 
 
 def plot_process3d(ax, problem, train_y, norm_train_y, denormalize, idealsearch, model, train_x):
@@ -605,13 +609,16 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
 
     # (3) train krg
     krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
+    krg1 = copy.deepcopy(krg)
 
     # (4-0) before enter propose x phase, conduct once krg search on ideal
     if search_ideal:
         train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
+        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
+        return
+
 
     # (4) enter iteration, propose next x till number of iteration is met
     ego_eval = EI.ego_fit(target_problem.n_var, target_problem.n_obj, target_problem.n_constr, target_problem.xu, target_problem.xl,target_problem.name())
@@ -622,6 +629,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         # visual check
 
         plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
+        return
 
         # plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
 
@@ -634,7 +642,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
-        visualplot =False
+        visualplot = True
         # ax = None
 
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
@@ -887,14 +895,20 @@ def para_run():
     return None
 
 def plot_run():
-    target_problems = ["ZDT3(n_var=6)", "DTLZ1(n_var=6, n_obj=2)", "DTLZs.DTLZ7(n_var=6, n_obj=2)", "WFG.WFG_2(n_var=6, n_obj=2, K=4)"]
+    import json
+    problems_json = 'p/resconvert.json'
+    with open(problems_json, 'r') as data_file:
+        hyp = json.load(data_file)
+    target_problems = hyp['MO_target_problems']
+
     method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
-    search_ideal = 1
-    max_eval = 100
+    search_ideal = 0
+    max_eval = 250
     num_pop = 100
     num_gen = 100
     seed_index = 1
-    paper1_mainscript(seed_index, target_problems[0], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
+    for i in range(15):
+        paper1_mainscript(seed_index, target_problems[i], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
 
 def p3d_run():
     target_problems = ["DTLZ3(n_var=6, n_obj=3)"]
@@ -911,7 +925,7 @@ def p3d_pararun():
     target_problems = ["DTLZ1(n_var=6, n_obj=3)", "DTLZ2(n_var=6, n_obj=3)", "DTLZ3(n_var=6, n_obj=3)"]
     method_selections = ['normalization_with_self', 'normalization_with_nd']
     search_ideal = 0
-    max_eval = 100
+    max_eval = 250
     num_pop = 100
     num_gen = 100
     seedmax = 29
