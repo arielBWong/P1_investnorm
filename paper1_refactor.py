@@ -397,7 +397,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     # ---------- visual check
     ax.cla()
     ax.scatter(true_pf[:, 0], true_pf[:, 1], c='green', s=0.2)
-    # ax.scatter(train_y[:, 0], train_y[:, 1], c='blue', s=0.2)
+    ax.scatter(train_y[:, 0], train_y[:, 1], c='blue', s=1)
     nd_front = get_ndfront(norm_train_y)
     nd_frontdn = denormalize(nd_front, train_y)
     ax.scatter(nd_frontdn[:, 0], nd_frontdn[:, 1], c='blue')
@@ -405,10 +405,10 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     # plot reference point
     ref = [1.1] * train_y.shape[1]
     ref_dn = denormalize(ref, train_y)
-    ax.scatter(ref_dn[0], ref_dn[1], c='red', marker='D')
+    ax.scatter(ref_dn[0], ref_dn[1], c='green', marker='D')
 
-    # plt.legend(['PF', 'archive A', 'nd front', 'ref point'])
-    plt.legend(['PF',  'nd front', 'ref point'])
+    plt.legend(['PF', 'archive A', 'nd front', 'ref point'])
+    # plt.legend(['PF',  'nd front', 'ref point'])
     # -----------visual check--
 
     if idealsearch:
@@ -421,8 +421,8 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
         pred_y = np.hstack((pred_y1, pred_y2))
         pred_y = denormalize(pred_y, train_y)
         ax.scatter(pred_y[:, 0], pred_y[:, 1], c='black', marker=7, s=100)
-        plt.legend(['PF', 'nd front', 'ref point', 'ideal search', 'estimates'])
-        # plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'])
+        # plt.legend(['PF', 'nd front', 'ref point', 'ideal search', 'estimates'])
+        plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'])
 
 
     plt.title(problem.name())
@@ -463,8 +463,9 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     savename2 = savefolder + '\\' + problem.name() + '_process_nd_' + str(idealsearch) + '.png'
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
-
+    plt.close()
     '''
+
 
 
 
@@ -584,8 +585,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     hv_ref = [1.1, 1.1]
 
 
-    plt.ion()
-    figure, ax = plt.subplots()
+    # plt.ion()
+    # figure, ax = plt.subplots()
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -616,8 +617,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
-        return
+        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
+
 
 
     # (4) enter iteration, propose next x till number of iteration is met
@@ -627,11 +628,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
-
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
-        return
-
-        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize)
+        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
 
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
@@ -642,9 +639,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
-        visualplot = True
-        # ax = None
-
+        visualplot = False
+        ax = None
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
                                                     visualplot, ax, **ego_evalpara)
@@ -654,12 +650,14 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
         #--------visual check
+        '''
         ax.scatter(next_y[:, 0], next_y[:, 1], c='orange', marker='X')
         pred_y1, _ = krg[0].predict(next_x)
         pred_y2, _ = krg[1].predict(next_x)
         pred_y = denormalize(np.hstack((pred_y1, pred_y2)), train_y)
         ax.scatter(pred_y[:, 0], pred_y[:, 1], marker=7, c='black')
         plt.pause(2)
+        '''
         #------------visual check
 
         # add new proposed data
@@ -688,7 +686,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
                 pf_hv, nd_hv = hv_converge(target_problem, train_y)
                 pf_nd = np.append(pf_nd, pf_hv)
                 pf_nd = np.append(pf_nd, nd_hv)
-                plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
+                # plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
 
         # retrain krg, normalization needed
         norm_train_y = norm_scheme(train_y)
@@ -863,10 +861,7 @@ def single_run():
 
 def para_run():
     import json
-    problems_json = ['p/wfg_problems_hv.json',
-                     'p/wfg_problems_hvnd.json',
-                     'p/wfg_problems_hvndr.json',
-                     'p/dtlz_problems_hv.json',
+    problems_json = ['p/dtlz_problems_hv.json',
                      'p/dtlz_problems_hvnd.json',
                      'p/dtlz_problems_hvndr.json',
                       'p/zdt_problems_hv.json',
@@ -874,7 +869,7 @@ def para_run():
                       'p/zdt_problems_hvndr.json',
                      ]
     args = []
-    seedmax = 11
+    seedmax = 29
     for problem_setting in problems_json:
         with open(problem_setting, 'r') as data_file:
             hyp = json.load(data_file)
@@ -888,7 +883,7 @@ def para_run():
             for seed in range(seedmax):
                 args.append((seed, problem, method_selection, search_ideal, max_eval, num_pop, num_gen))
 
-    num_workers = 12
+    num_workers = 14
     pool = mp.Pool(processes=num_workers)
     pool.starmap(paper1_mainscript, ([arg for arg in args]))
 
@@ -907,6 +902,7 @@ def plot_run():
     num_pop = 100
     num_gen = 100
     seed_index = 1
+    # i = 12
     for i in range(15):
         paper1_mainscript(seed_index, target_problems[i], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
 
@@ -951,7 +947,7 @@ def p3d_pararun():
 if __name__ == "__main__":
     # p3d_pararun()
     # p3d_run()
-    plot_run()
+    # plot_run()
 
     # single_run()
-    # para_run()
+    para_run()
