@@ -58,7 +58,7 @@ class eim_fit(Problem):
         krg = kwargs['krg']
         nd_front = kwargs['nd_front']
         ref = kwargs['ref']
-        fit = ego_believer(x, krg, nd_front, ref)
+        fit = ego_eim(x, krg, nd_front, ref)
 
         out["F"] = -fit
 

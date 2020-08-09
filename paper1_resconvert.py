@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import optimizer_EI
 from pymop import ZDT1, ZDT2, ZDT3, ZDT4, ZDT6, \
-    DTLZ1, DTLZ2,DTLZ3, \
+    DTLZ1, DTLZ2,DTLZ3,DTLZ4, \
     BNH, Carside, Kursawe, OSY, Truss2D, WeldedBeam, TNK
 from EI_krg import acqusition_function, close_adjustment
 from sklearn.utils.validation import check_array
@@ -58,8 +58,6 @@ def hv_convergeplot(k):
 
     num_plot = max_eval - number_of_initial_samples
     hvplot = np.zeros((3, num_plot))
-
-
 
     path = os.getcwd()
     path = path + '\\paper1_results\\paper1_resconvert\\median_id.joblib'
@@ -152,9 +150,6 @@ def hvconverge_averageplot():
         if 'WFG' in problem.name():
             evalnum = 250
             initsize = 200
-        if 'DTLZ' in problem.name():
-            evalnum = 100
-            initsize = problem.n_var * 11 - 1
 
         # each problem calculate mean and variance
         fig, ax = plt.subplots()
@@ -166,25 +161,34 @@ def hvconverge_averageplot():
             # create raw data for each method
             rawhv = np.zeros((seedmax, evalnum -initsize))
             for seed in range(seedmax):
-                savename = savefolder + '\\hvconvg_seed_' + str(seed) + '.csv'
-                print(savename)
-                hv = np.loadtxt(savename, delimiter=',')
-                hv = np.atleast_2d(hv)
+                # savename = savefolder + '\\hvconvg_seed_' + str(seed) + '.csv'
+                # print(savename)
+                # hv = np.loadtxt(savename, delimiter=',')
+                # hv = np.atleast_2d(hv)
+                # hv = hv[0:evalnum - initsize, 1]
 
                 # fix bug
-                hv = hv[0:evalnum -initsize, 1]
+                savename = savefolder + '\\trainy_seed_' + str(seed) + '.csv'
+                print(savename)
+                trainy = np.loadtxt(savename, delimiter=',')
+                trainy = np.atleast_2d(trainy)
+                hv = []
+                for i in range(initsize, evalnum):
+                    eval_hv = get_f2hvnorm(trainy[0:i, :], pf)
+                    hv = np.append(hv, eval_hv)
+
                 rawhv[seed, :] = hv
             # average over all seeds
             mean_hv1 = np.mean(rawhv, axis=0)
             std_hv1 = np.std(rawhv, axis=0)
-            x = range(evalnum -initsize)
+            x = range(initsize, evalnum)
 
             ax.plot(x, mean_hv1)
             ax.fill_between(x, mean_hv1 + std_hv1, mean_hv1-std_hv1, alpha=0.2)
             # plt.pause(2)
 
             a = 0
-        ax.set_xlabel('iterations')
+        ax.set_xlabel('evaluations')
         ax.set_ylabel('hypervolume')
         plt.title(problem.name())
         plt.legend(['archive normalization', 'nd normalization', 'nd and ideal search normalization'])
@@ -332,8 +336,12 @@ def plot_process3d(problem, train_y, method,seed):
 def hv_medianplot():
     '''
     this function plot the final results of each problem
-    :param seed:
-    :return:
+
+    :return: saved png and eps file in folder paper1_results\\ndplots\\prob_method_seed_*.eps/png
+    (1) read the median seed
+    (2) read nd of this median seed
+    (3) plot and save
+
     '''
     import json
 
@@ -344,54 +352,67 @@ def hv_medianplot():
         hyp = json.load(data_file)
 
     target_problems = hyp['MO_target_problems']
-    # target_problems = target_problems[4:5]
 
     num_pro = len(target_problems)
     methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
     num_methods = len(methods)
 
-
-    prob_id = 2
-    problem = target_problems[prob_id]
-    method_selection = methods[2]
-    seed = 19
-    problem = eval(problem)
-
     path = os.getcwd()
-    path = path + '\paper1_results'
-    savefolder = path + '\\' + problem.name() + '_' + method_selection
-    savename = savefolder + '\\nd_seed_' + str(seed) + '.csv'
-    nd_front = np.loadtxt(savename, delimiter=',')
-    nd_front = np.atleast_2d(nd_front)
-    pf = get_paretofront(problem, 1000)
+    pathsave = path + '\\paper1_results\\ndplots\\'
+    if not os.path.exists(pathsave):
+        os.mkdir(pathsave)
 
-    plt.ion()
-    fig, ax = plt.subplots()
-    ax.scatter(pf[:, 0], pf[:, 1], s=1)
-    ax.scatter(nd_front[:, 0], nd_front[:, 1], facecolors='white', edgecolors='red', alpha=1)
-    plt.title(problem.name())
-    plt.legend(['PF', 'alg results'])
-    plt.xlabel('f1')
-    plt.ylabel('f2')
+    path_medianseed = os.getcwd() + '\\paper1_results\\paper1_resconvert\\median_id.joblib'
+    seedmedian = load(path_medianseed)
 
-    #-----
-    path = os.getcwd()
-    savefolder = path + '\\paper1_results\\plots'
-    if not os.path.exists(savefolder):
-        os.mkdir(savefolder)
 
-    savename1 = savefolder + '\\' + problem.name() + '_' + method_selection + '_final_' + str(seed) + '.eps'
-    savename2 = savefolder + '\\' + problem.name() + '_' + method_selection + '_final_' + str(seed) + '.png'
-    plt.savefig(savename1, format='eps')
-    plt.savefig(savename2)
+    for prob_id in range(num_pro):
+        # prob_id = 13
 
-    plt.pause(2)
-    plt.close()
+        problem = target_problems[prob_id]
+        problem = eval(problem)
+
+        for method_selection in methods:
+            seed = seedmedian[problem.name() + '_' + method_selection]
+
+
+            savefolder = path + '\\paper1_results\\' + problem.name() + '_' + method_selection
+            savename = savefolder + '\\trainy_seed_' + str(int(seed)) + '.csv'
+
+            trainy = np.loadtxt(savename, delimiter=',')
+            nd_front = get_ndfront(trainy)
+            # nd_front = np.loadtxt(savename, delimiter=',')
+            nd_front = np.atleast_2d(nd_front)
+            pf = get_paretofront(problem, 1000)
+
+
+            plt.ion()
+            fig, ax = plt.subplots()
+            ax.scatter(pf[:, 0], pf[:, 1], s=1)
+            ax.scatter(nd_front[:, 0], nd_front[:, 1], facecolors='white', edgecolors='red', alpha=1)
+            plt.title(problem.name())
+            plt.legend(['PF', 'Search result'])
+            plt.xlabel('f1')
+            plt.ylabel('f2')
+
+            #-----
+            paths = os.getcwd()
+            savefolder = paths + '\\paper1_results\\plots'
+            if not os.path.exists(savefolder):
+                os.mkdir(savefolder)
+
+            savename1 = savefolder + '\\' + problem.name() + '_' + method_selection + '_final_' + str(seed) + '.eps'
+            savename2 = savefolder + '\\' + problem.name() + '_' + method_selection + '_final_' + str(seed) + '.png'
+            plt.savefig(savename1, format='eps')
+            plt.savefig(savename2)
+
+            plt.pause(2)
+            plt.close()
 
 def get_paretofront(problem, n):
     from pymop.factory import get_uniform_weights
     n_obj = problem.n_obj
-    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1' or problem.name() == 'DTLZ3':
+    if problem.name() == 'DTLZ2' or problem.name() == 'DTLZ1' or problem.name() == 'DTLZ3' or problem.name() == 'DTLZ4':
         ref_dir = get_uniform_weights(n, n_obj)
         return problem.pareto_front(ref_dir)
     else:
@@ -558,6 +579,8 @@ def trainy_summary2csv():
         ref = nadir * 1.1
         if 'ZDT' in problem.name():
             evalnum = 100
+        if 'DTLZ' in problem.name():
+            evalnum = 100
         if 'WFG' in problem.name():
             evalnum = 250
         for j in range(num_methods):
@@ -568,16 +591,8 @@ def trainy_summary2csv():
                 print(savename)
                 trainy = np.loadtxt(savename, delimiter=',')
                 trainy = np.atleast_2d(trainy)
-                '''
-                fig, ax = plt.subplots()
-                ax.scatter(pf[:, 0], pf[:, 1])
-                ax.scatter(nd_front[:, 0], nd_front[:, 1])
-                plt.title(problem.name())
-                plt.show()
-                plt.pause(0.5)
-                plt.close()
-                '''
-                # fix bug
+
+                # fixed bug on number of evaluations
                 trainy = trainy[0:evalnum, :]
                 # hv = get_f2hv(trainy, ref)
                 hv = get_f2hvnorm(trainy, pf)
@@ -706,10 +721,11 @@ def plot3dresults():
 
 
 if __name__ == "__main__":
-    trainy_summary2csv()
+    # trainy_summary2csv()
     # for k in range(0,12):
     #     hv_convergeplot(k)
     # hv_summary2csv()
     # hv_medianplot()
     # plot3dresults()
     # hvconverge_averageplot()
+    hv_medianplot()

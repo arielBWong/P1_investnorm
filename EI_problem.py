@@ -18,16 +18,14 @@ def gausspdf(x):
 
 
 def EIM_hv(mu, sig, nd_front, reference_point):
-
+    '''
+    this method calculate
+    '''
     # mu sig nu_front has to be np_2d
     mu = check_array(mu)
     sig = check_array(sig)
     nd_front = check_array(nd_front)
     reference_point = check_array(reference_point)
-
-    # np.savetxt('sig.csv', sig, delimiter=',')
-    # np.savetxt('mu.csv', mu, delimiter=',')
-    # np.savetxt('nd_front.csv', nd_front, delimiter=',')
 
     n_nd = nd_front.shape[0]
     n_mu = mu.shape[0]

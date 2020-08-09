@@ -453,7 +453,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
 
 
     # -----
-    '''
+
     path = os.getcwd()
     savefolder = path + '\\paper1_results\\process_plot'
     if not os.path.exists(savefolder):
@@ -464,7 +464,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
     plt.close()
-    '''
+
 
 
 
@@ -585,8 +585,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     hv_ref = [1.1, 1.1]
 
 
-    # plt.ion()
-    # figure, ax = plt.subplots()
+    plt.ion()
+    figure, ax = plt.subplots()
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -617,7 +617,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
-        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
+        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
+        return
 
 
 
@@ -628,8 +629,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
-        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
-
+        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
+        return
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
@@ -757,6 +758,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
         # plot_process3d(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
+        # return
 
     # (4) enter iteration, propose next x till number of iteration is met
     ego_eval = EI.ego_fit(target_problem.n_var, target_problem.n_obj, target_problem.n_constr, target_problem.xu,
@@ -897,13 +899,13 @@ def plot_run():
     target_problems = hyp['MO_target_problems']
 
     method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
-    search_ideal = 0
+    search_ideal = 1
     max_eval = 250
     num_pop = 100
     num_gen = 100
     seed_index = 1
-    # i = 12
-    for i in range(15):
+    i = 4
+    for i in range(4, 9):
         paper1_mainscript(seed_index, target_problems[i], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
 
 def p3d_run():
@@ -947,7 +949,7 @@ def p3d_pararun():
 if __name__ == "__main__":
     # p3d_pararun()
     # p3d_run()
-    # plot_run()
+    plot_run()
 
     # single_run()
-    para_run()
+    # para_run()
