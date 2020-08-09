@@ -573,7 +573,7 @@ def gethv(front, ref):
         return 0.0
 
 
-def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen):
+def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen, visual):
     '''
     :param seed_index:
     :param target_problem:
@@ -597,9 +597,9 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     print('Problem %s, seed %d' % (target_problem.name(), seed_index))
     hv_ref = [1.1, 1.1]
 
-
-    plt.ion()
-    figure, ax = plt.subplots()
+    if visual:
+        plt.ion()
+        figure, ax = plt.subplots()
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -630,8 +630,9 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
-        return
+        if visual:
+            plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
+            return
 
 
 
@@ -642,8 +643,9 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
-        return
+        if visual:
+            plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
+            # return
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
@@ -663,16 +665,9 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         next_x = np.atleast_2d(next_x).reshape(-1, n_vals)
         next_y = target_problem.evaluate(next_x, return_values_of=['F'])
 
-        #--------visual check
-        '''
-        ax.scatter(next_y[:, 0], next_y[:, 1], c='orange', marker='X')
-        pred_y1, _ = krg[0].predict(next_x)
-        pred_y2, _ = krg[1].predict(next_x)
-        pred_y = denormalize(np.hstack((pred_y1, pred_y2)), train_y)
-        ax.scatter(pred_y[:, 0], pred_y[:, 1], marker=7, c='black')
-        plt.pause(2)
-        '''
-        #------------visual check
+        #---visual check
+        if visual:
+            process_visualcheck(ax, next_x, next_y, krg, denormalize, train_y)
 
         # add new proposed data
         train_x = np.vstack((train_x, next_x))
@@ -700,7 +695,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
                 pf_hv, nd_hv = hv_converge(target_problem, train_y)
                 pf_nd = np.append(pf_nd, pf_hv)
                 pf_nd = np.append(pf_nd, nd_hv)
-                # plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
+                if visual:
+                    plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg, train_x)
 
         # retrain krg, normalization needed
         norm_train_y = norm_scheme(train_y)
@@ -713,6 +709,17 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     nd2csv(train_y, target_problem, seed_index, method_selection, search_ideal)
     pfnd2csv(pf_nd, target_problem, seed_index, method_selection, search_ideal)
 
+def process_visualcheck(ax, next_x, next_y, krg, denormalize, train_y):
+    '''
+    process visual next
+    plot predicted next point f and real next point f on given ax
+    '''
+    ax.scatter(next_y[:, 0], next_y[:, 1], c='orange', marker='X')
+    pred_y1, _ = krg[0].predict(next_x)
+    pred_y2, _ = krg[1].predict(next_x)
+    pred_y = denormalize(np.hstack((pred_y1, pred_y2)), train_y)
+    ax.scatter(pred_y[:, 0], pred_y[:, 1], marker=7, c='black')
+    plt.pause(2)
 
 def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen):
     '''
@@ -738,6 +745,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
     print('Problem %s, seed %d' % (target_problem.name(), seed_index))
     hv_ref = [1.1, 1.1, 1.1]
 
+    # step(0) get ready to plot
     # plt.ion()
     # fig = plt.figure()
     # ax = fig.add_subplot(111, projection='3d')
@@ -871,7 +879,7 @@ def single_run():
     target_problems = "ZDT1(n_var=6)"
     method_selection = "normalization_with_nd"
     seed_index = 8
-    paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen)
+    paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen, visual)
     return None
 
 def para_run():
@@ -896,7 +904,7 @@ def para_run():
         num_gen = hyp['num_gen']
         for problem in target_problems:
             for seed in range(seedmax):
-                args.append((seed, problem, method_selection, search_ideal, max_eval, num_pop, num_gen))
+                args.append((seed, problem, method_selection, search_ideal, max_eval, num_pop, num_gen, False))
 
     num_workers = 14
     pool = mp.Pool(processes=num_workers)
