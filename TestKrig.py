@@ -1,16 +1,20 @@
-from smt.surrogate_models import KRG
 import numpy as np
 
-from numpy import genfromtxt
+from EI_problem import eim_eu, eim_maxmin
 
-x = genfromtxt('x.csv', delimiter=',')
-y = genfromtxt('y.csv', delimiter=',')
-x = np.atleast_2d(x)
-y = np.atleast_2d(y).reshape(-1, 1)
+if __name__ == "__main__":
+    a = np.array([[1,7], [4,0]])
+    b = np.sqrt(a)
+    print(b)
 
-sm = KRG(theta0=[1e-2], print_global=False)
-sm.set_training_values(x, y)
-sm.train()
+    mu = np.loadtxt('mu.csv', delimiter=',')
+    s = np.loadtxt('sig.csv', delimiter=',')
+    f = np.loadtxt('nd.csv', delimiter=',')
 
+    mu = np.atleast_2d(mu)
+    s = np.atleast_2d(s)
+    f = np.atleast_2d(f)
+    out = eim_maxmin(mu, s, f, np.atleast_2d([1.1, 1.1]))
+    print(out)
 
 

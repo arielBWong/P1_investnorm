@@ -8,7 +8,7 @@ import pygmo as pg
 from scipy.stats import norm
 from sklearn.utils.validation import check_array
 
-from EI_problem import  ego_believer, EIM_hv
+from EI_problem import  ego_believer, ego_eim
 
 
 

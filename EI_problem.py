@@ -35,7 +35,7 @@ def ego_eim(x, krg, nd_front, ref):
     pred_obj = np.atleast_2d(pred_obj).reshape(-1, n_obj, order='F')
     pred_sigma = np.atleast_2d(pred_sigma).reshape(-1, n_obj, order='F')
 
-    fit = EIM_hv(pred_obj, pred_sigma, n_obj, ref)
+    fit = EIM_hv(pred_obj, pred_sigma, nd_front, ref)
     return fit
 
 def EIM_hv(mu, sig, nd_front, reference_point):
@@ -70,6 +70,13 @@ def EIM_hv(mu, sig, nd_front, reference_point):
     return y
 
 def eim_eu(mu, sig, nd_front, ref):
+    '''
+    this function uses euclidean distance to calcuate fitness
+    for each point, calculate eim w.r.t. each nd
+    squared sum over objectives and then sqrt (euclidean distance to each nd front),
+    select the minimum
+    '''
+
     mu = check_array(mu)
     sig = check_array(sig)
     nd_front = check_array(nd_front)
@@ -86,9 +93,41 @@ def eim_eu(mu, sig, nd_front, ref):
     eim = (nd_front_extend - mu_extend) * gaussiancdf((nd_front_extend - mu_extend)/sig_extend) + \
            sig_extend * gausspdf((nd_front_extend - mu_extend)/sig_extend)
 
-    eims = np.sum(eim, axis=1)
-    eim = eim.reshape(n_mu, -1)
-    eim = np.sqrt(eim)
+    eim = np.sum(eim ** 2, axis=1)  # squared sum over objectives
+    eim = np.sqrt(eim)              # sqrt over objectives, get euclidean distance
+    eim = eim.reshape(n_mu, -1)     # arrange 'c type', row: nd fronts size
+
+    out = np.min(eim, axis=1)        # minimum one over nd fronts
+    return out
+
+def eim_maxmin(mu, sig, nd_front, ref):
+    '''
+       this function uses max min metric to calcuate fitness
+       for each point, calculate eim w.r.t. each nd results should be [size_nd, size_obj]
+       for each point max over objectives and then min over nd ,
+       return the min value as fitness
+       '''
+    mu = check_array(mu)
+    sig = check_array(sig)
+    nd_front = check_array(nd_front)
+    ref = check_array(ref)
+
+    n_nd = nd_front.shape[0]
+    n_mu = mu.shape[0]
+
+    mu_extend = np.repeat(mu, n_nd, axis=0)
+    sig_extend = np.repeat(sig, n_nd, axis=0)
+    r_extend = np.repeat(ref, n_nd * n_mu, axis=0)
+    nd_front_extend = np.tile(nd_front, (n_mu, 1))
+
+    eim = (nd_front_extend - mu_extend) * gaussiancdf((nd_front_extend - mu_extend) / sig_extend) + \
+          sig_extend * gausspdf((nd_front_extend - mu_extend) / sig_extend)
+
+    eim = np.atleast_2d(eim)
+    eim = np.max(eim, axis=1)   # max over objectives
+    eim = eim.reshape(n_mu, -1)  # re-arrange to row being nd front size
+    out = np.min(eim, axis=1)   #  min over nd front
+    return out
 
 
 
@@ -146,9 +185,9 @@ def ego_eim(x, krg, nd_front, ref):
     for model in krg:
         y, s = model.predict(x)
         pred_obj = np.append(pred_obj, y)
-        pred_sig = np.append(pred_obj, s)
-    pred_obj = pred_obj.reshape(-1, n_obj)
-    pred_sig = pred_sig.reshape(-1, n_obj)
+        pred_sig = np.append(pred_sig, s)
+    pred_obj = np.reshape(pred_obj,(-1, n_obj), order='F')
+    pred_sig = np.reshape(pred_sig, (-1, n_obj), order='F')
 
     eim = EIM_hv(pred_obj, pred_sig, nd_front, ref)
     return eim

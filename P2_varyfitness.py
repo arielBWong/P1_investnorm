@@ -461,7 +461,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
 
 
     # -----
-
+    '''
     path = os.getcwd()
     savefolder = path + '\\paper1_results\\process_plot'
     if not os.path.exists(savefolder):
@@ -472,6 +472,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     plt.savefig(savename1, format='eps')
     plt.savefig(savename2)
     plt.close()
+    '''
 
 
 
@@ -570,11 +571,7 @@ def gethv(front, ref):
 
 def p2_mainscript(seed_index, target_problem, ego_method, method_selection, search_ideal, max_eval, num_pop, num_gen):
     '''
-    :param seed_index:
-    :param target_problem:
-    :param method_selection: function name string, normalization scheme
-    :param ideal_search: whether to use kriging to search for ideal point
-    :return:
+    what to do in progress
     '''
     # steps
     # (1) init training data with number of initial_samples
@@ -593,8 +590,8 @@ def p2_mainscript(seed_index, target_problem, ego_method, method_selection, sear
     hv_ref = [1.1, 1.1]
 
 
-    # plt.ion()
-    # figure, ax = plt.subplots()
+    plt.ion()
+    figure, ax = plt.subplots()
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -604,7 +601,6 @@ def p2_mainscript(seed_index, target_problem, ego_method, method_selection, sear
         number_of_initial_samples = 11 * n_vals - 1
 
     n_iter = max_eval - number_of_initial_samples  # stopping criterion set
-
     pf_nd = []  # analysis parameter, due to search_ideal, size is un-determined
 
     # (1) init training data with number of initial_samples
@@ -630,12 +626,11 @@ def p2_mainscript(seed_index, target_problem, ego_method, method_selection, sear
 
 
     # (4) enter iteration, propose next x till number of iteration is met
-    # fitness object constructor arguments are same across ego_believer, ego_eim, ego_eu, ego_maxmin
+    # following fitness object constructor arguments are the same across ego_believer, ego_eim, ego_eu, ego_maxmin
     problem_argin = '(target_problem.n_var, target_problem.n_obj,' ' target_problem.n_constr, ' \
                     'target_problem.xu, target_problem.xl,target_problem.name())'
     ego_eval = ego_method + problem_argin
     ego_eval = eval(ego_eval)
-
 
     for iteration in range(n_iter):
         print('iteration %d' % iteration)
@@ -645,18 +640,19 @@ def p2_mainscript(seed_index, target_problem, ego_method, method_selection, sear
 
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
-        ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
+        ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': np.atleast_2d(hv_ref),  # ego search parameters
                         'denorm': denormalize, 'normdata': train_y,       # ego search plot parameters
                         'pred_model': krg, 'real_prob': target_problem,   # ego search plot parameter
                         'ideal_search': search_ideal, 'seed': seed_index, 'method': method_selection}  # plot save params
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
-        visualplot = False
-        ax = None
+        visualplot = True
+        # ax = None  # when visualplot is True, commit out this line, uncommit the return line
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
                                                     visualplot, ax, **ego_evalpara)
+        return
         # propose next_x location
         # dimension re-check
         next_x = np.atleast_2d(next_x).reshape(-1, n_vals)
@@ -866,7 +862,8 @@ def single_run():
     target_problem = target_problems[0]
     target_problems = "ZDT1(n_var=6)"
     method_selection = "normalization_with_nd"
-    ego_method = 'EI.ego_fit'
+    # ego_method = 'EI.ego_fit'
+    ego_method = 'EI.ego_fiteim'
     seed_index = 8
     p2_mainscript(seed_index, target_problem, ego_method,  method_selection, search_ideal, max_eval, num_pop, num_gen)
     return None
@@ -916,7 +913,7 @@ def plot_run():
     seed_index = 1
     i = 13
     # for i in range(4, 9):
-    p2(seed_index, target_problems[i], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
+    p2_mainscript(seed_index, target_problems[i], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
 
 def p3d_run():
     target_problems = ["DTLZ3(n_var=6, n_obj=3)"]

@@ -100,6 +100,8 @@ def EI_hv(mu_norm, nd_front_norm, reference_point_norm):
                 ei.append(hv_value)
     ei = np.atleast_2d(ei).reshape(n, -1)
     return ei
+
+
 def EI_hv_contribution(mu_norm, nd_front_norm, reference_point_norm):
 
     # comply with pg settings

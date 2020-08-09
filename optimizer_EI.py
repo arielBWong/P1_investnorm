@@ -380,8 +380,6 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, visflag, 
         # np.savetxt('test_x.csv', pop_x, delimiter=',')
         pop_f = problem.evaluate(pop_x, return_values_of=["F"], **kwargs)
 
-
-
     # best member of current iteration
     bestval = np.min(pop_f)  # single objective only
     ibest = np.where(pop_f == bestval)  # what if multiple best values?
@@ -412,6 +410,7 @@ def optimizer_DE(problem, ncon, bounds, insertpop, F, CR, NP, itermax, visflag, 
             visualize_egobelieverde(ax, pop_x, **kwargs)
             if iter == 1:
                 visualize_firstgenlandscape(pop_x, **kwargs)
+                exit(1)
 
 
 
