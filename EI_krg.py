@@ -47,9 +47,6 @@ def EIM_hv(mu, sig, nd_front, reference_point):
     nd_front = check_array(nd_front)
     reference_point = check_array(reference_point)
 
-    # np.savetxt('sig.csv', sig, delimiter=',')
-    # np.savetxt('mu.csv', mu, delimiter=',')
-    # np.savetxt('nd_front.csv', nd_front, delimiter=',')
 
     n_nd = nd_front.shape[0]
     n_mu = mu.shape[0]

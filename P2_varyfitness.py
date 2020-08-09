@@ -392,7 +392,7 @@ def get_paretofront(problem, n):
         return problem.pareto_front(n_pareto_points=n)
 
 def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, model, train_x):
-    ss = 16
+    ss = 14
     true_pf = get_paretofront(problem, 1000)
     # ---------- visual check
     ax.cla()
@@ -407,11 +407,7 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     ref_dn = denormalize(ref, train_y)
     ax.scatter(ref_dn[0], ref_dn[1], c='green', marker='D')
 
-    bottom, top = ax.get_ylim()
-    top = top + 3
-    # bottom =  bottom - 0.4
-    ax.set_ylim(bottom, top)
-    plt.legend(['PF', 'archive A', 'nd front', 'ref point'], fontsize=ss, ncol=2, handleheight=2.4, labelspacing=0.005)
+    plt.legend(['PF', 'archive A', 'nd front', 'ref point'],fontsize=ss-2)
     # plt.legend(['PF',  'nd front', 'ref point'])
     # -----------visual check--
 
@@ -424,15 +420,14 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
         pred_y2, _ = model[1].predict(train_x[-2:, :])
         pred_y = np.hstack((pred_y1, pred_y2))
         pred_y = denormalize(pred_y, train_y)
-        # ax.scatter(pred_y[:, 0], pred_y[:, 1], c='black', marker=7, s=100)
-        bottom, top = ax.get_ylim()
-        top = top + 3
+        ax.scatter(pred_y[:, 0], pred_y[:, 1], c='black', marker=7, s=100)
+        # bottom, top = ax.get_ylim()
+        # top = top + 4
         # bottom =  bottom - 0.4
-        ax.set_ylim(bottom, top)
+        # ax.set_ylim(bottom, top)
         # plt.legend(['PF', 'nd front', 'ref point', 'ideal search', 'estimates'])
-        # plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'extreme points', 'surrogate minima'], fontsize=ss-1, ncol=2, handleheight=2.4, labelspacing=0.005)
-        plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'extreme points', 'surrogate minima'], fontsize=ss,
-                   ncol=2, handleheight=2.4, labelspacing=0.005)
+        plt.legend(['PF', 'archive A', 'nd front', 'ref point', 'ideal search', 'estimates'], fontsize=ss-2)
+
 
     ax.set_title(problem.name(),fontsize=ss)
     ideal = np.min(nd_frontdn, axis=0)
@@ -456,13 +451,13 @@ def plot_process(ax, problem, train_y, norm_train_y, denormalize, idealsearch, m
     line = Line2D(line_v1, line_v2, linestyle='--', c='black')
     ax.add_line(line)
 
-    ax.set_xlabel('f1', fontsize=ss)
-    ax.set_ylabel('f2', fontsize=ss, rotation='horizontal')
+    ax.set_xlabel('f1',fontsize=ss)
+    ax.set_ylabel('f2',fontsize=ss, rotation='horizontal')
 
     # bottom, top = ax.get_ylim()
     # top = top + 4
     # ax.set_ylim(bottom, top)
-    plt.pause(5)
+    plt.pause(2)
 
 
     # -----
@@ -573,7 +568,7 @@ def gethv(front, ref):
         return 0.0
 
 
-def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen):
+def p2_mainscript(seed_index, target_problem, ego_method, method_selection, search_ideal, max_eval, num_pop, num_gen):
     '''
     :param seed_index:
     :param target_problem:
@@ -598,8 +593,8 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
     hv_ref = [1.1, 1.1]
 
 
-    plt.ion()
-    figure, ax = plt.subplots()
+    # plt.ion()
+    # figure, ax = plt.subplots()
 
     # collect problem parameters: number of objs, number of constraints
     n_vals = target_problem.n_var
@@ -630,20 +625,24 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         train_x, train_y = idealsearch_update(train_x, train_y, krg, target_problem)
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
-        plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
-        return
-
+        # plot_process(ax, target_problem, train_y, norm_train_y, denormalize, True, krg1, train_x)
+        # return
 
 
     # (4) enter iteration, propose next x till number of iteration is met
-    ego_eval = EI.ego_fit(target_problem.n_var, target_problem.n_obj, target_problem.n_constr, target_problem.xu, target_problem.xl,target_problem.name())
+    # fitness object constructor arguments are same across ego_believer, ego_eim, ego_eu, ego_maxmin
+    problem_argin = '(target_problem.n_var, target_problem.n_obj,' ' target_problem.n_constr, ' \
+                    'target_problem.xu, target_problem.xl,target_problem.name())'
+    ego_eval = ego_method + problem_argin
+    ego_eval = eval(ego_eval)
+
 
     for iteration in range(n_iter):
         print('iteration %d' % iteration)
         # (4-1) de search for proposing next x point
         # visual check
         plot_process(ax, target_problem, train_y, norm_train_y, denormalize, False, krg, train_x)
-        return
+
         # use my own DE faster
         nd_front = get_ndfront(norm_train_y)
         ego_evalpara = {'krg': krg, 'nd_front': nd_front, 'ref': hv_ref,  # ego search parameters
@@ -653,7 +652,7 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         bounds = np.vstack((target_problem.xl, target_problem.xu)).T.tolist()
         insertpop = get_ndfrontx(train_x, norm_train_y)
 
-        visualplot = True
+        visualplot = False
         ax = None
         next_x, _, _, _ = optimizer_EI.optimizer_DE(ego_eval, ego_eval.n_constr, bounds,
                                                     insertpop, 0.8, 0.8, num_pop, num_gen,
@@ -705,7 +704,6 @@ def paper1_mainscript(seed_index, target_problem, method_selection, search_ideal
         # retrain krg, normalization needed
         norm_train_y = norm_scheme(train_y)
         krg, krg_g = cross_val_krg(train_x, norm_train_y, cons_y, enable_crossvalidation)
-
 
 
     # (5) save nd front under name \problem_method_i\nd_seed_1.csv
@@ -854,9 +852,7 @@ def paper1_mainscript3d(seed_index, target_problem, method_selection, search_ide
 
 def single_run():
     import json
-    # problems_json = 'p/zdt_problems_hvnd.json'
-    problems_json = 'p/zdt_problems_hvndr.json'
-    # problems_json = 'p/zdt_problems_hv.json'
+    problems_json = 'p/zdt_problems_hvnd.json'
 
     with open(problems_json, 'r') as data_file:
         hyp = json.load(data_file)
@@ -870,8 +866,9 @@ def single_run():
     target_problem = target_problems[0]
     target_problems = "ZDT1(n_var=6)"
     method_selection = "normalization_with_nd"
+    ego_method = 'EI.ego_fit'
     seed_index = 8
-    paper1_mainscript(seed_index, target_problem, method_selection, search_ideal, max_eval, num_pop, num_gen)
+    p2_mainscript(seed_index, target_problem, ego_method,  method_selection, search_ideal, max_eval, num_pop, num_gen)
     return None
 
 def para_run():
@@ -900,7 +897,7 @@ def para_run():
 
     num_workers = 14
     pool = mp.Pool(processes=num_workers)
-    pool.starmap(paper1_mainscript, ([arg for arg in args]))
+    pool.starmap(p2_mainscript, ([arg for arg in args]))
 
     return None
 
@@ -912,14 +909,14 @@ def plot_run():
     target_problems = hyp['MO_target_problems']
 
     method_selection = ['normalization_with_self', 'normalization_with_nd', 'normalization_with_nd']
-    search_ideal = 0
+    search_ideal = 1
     max_eval = 250
     num_pop = 100
     num_gen = 100
     seed_index = 1
     i = 13
     # for i in range(4, 9):
-    paper1_mainscript(seed_index, target_problems[i], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
+    p2(seed_index, target_problems[i], method_selection[1], search_ideal, max_eval, num_pop, num_gen)
 
 def p3d_run():
     target_problems = ["DTLZ3(n_var=6, n_obj=3)"]
@@ -965,7 +962,7 @@ def vary_egofit():
 if __name__ == "__main__":
     # p3d_pararun()
     # p3d_run()
-    plot_run()
+    # plot_run()
 
-    # single_run()
+    single_run()
     # para_run()

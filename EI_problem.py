@@ -16,10 +16,31 @@ def gausspdf(x):
     y = 1/np.sqrt(2*np.pi) * np.exp(-np.square(x)/2)
     return y
 
+def ego_eim(x, krg, nd_front, ref):
+    '''
+    this method calculate eim fitness
+    ** warning: constraint problem not considered
+    '''
+
+    x = np.atleast_2d(x)
+    n_samples = x.shape[0]
+    n_obj = len(krg)
+    pred_obj = []
+    pred_sigma = []
+    for model in krg:
+        y, s = model.predict(x)
+        pred_obj = np.append(pred_obj, y)
+        pred_sigma = np.append(pred_sigma, s)
+
+    pred_obj = np.atleast_2d(pred_obj).reshape(-1, n_obj, order='F')
+    pred_sigma = np.atleast_2d(pred_sigma).reshape(-1, n_obj, order='F')
+
+    fit = EIM_hv(pred_obj, pred_sigma, n_obj, ref)
+    return fit
 
 def EIM_hv(mu, sig, nd_front, reference_point):
     '''
-    this method calculate
+    this method calculate expected improvement with regard to hypervolume
     '''
     # mu sig nu_front has to be np_2d
     mu = check_array(mu)
@@ -46,13 +67,28 @@ def EIM_hv(mu, sig, nd_front, reference_point):
     y = np.atleast_2d((y1 - y2)).reshape(-1, n_nd)
     y = np.min(y, axis=1)
     y = np.atleast_2d(y).reshape(-1, 1)
-
-    # one beyond reference
-    # diff = reference_point - mu
-    # y_beyond = np.any(diff < 0, axis=1)
-    # y_beyond = np.atleast_2d(y_beyond).reshape(-1, 1)
-    # y = y * y_beyond
     return y
+
+def eim_eu(mu, sig, nd_front, ref):
+    mu = check_array(mu)
+    sig = check_array(sig)
+    nd_front = check_array(nd_front)
+    ref = check_array(ref)
+
+    n_nd = nd_front.shape[0]
+    n_mu = mu.shape[0]
+
+    mu_extend = np.repeat(mu, n_nd, axis=0)
+    sig_extend = np.repeat(sig, n_nd, axis=0)
+    r_extend = np.repeat(ref, n_nd * n_mu, axis=0)
+    nd_front_extend = np.tile(nd_front, (n_mu, 1))
+
+    eim = (nd_front_extend - mu_extend) * gaussiancdf((nd_front_extend - mu_extend)/sig_extend) + \
+           sig_extend * gausspdf((nd_front_extend - mu_extend)/sig_extend)
+
+    eims = np.sum(eim, axis=1)
+    eim = eim.reshape(n_mu, -1)
+    eim = np.sqrt(eim)
 
 
 

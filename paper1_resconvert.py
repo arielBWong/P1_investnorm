@@ -139,7 +139,8 @@ def hvconverge_averageplot():
     for problem_i, problem in enumerate(target_problems):
 
         # for each problem create three plots
-
+        problem_i = 13
+        problem = target_problems[problem_i]
         problem = eval(problem)
         pf = get_paretofront(problem, 100)
         nadir = np.max(pf, axis=0)
@@ -188,10 +189,16 @@ def hvconverge_averageplot():
             # plt.pause(2)
 
             a = 0
-        ax.set_xlabel('evaluations')
-        ax.set_ylabel('hypervolume')
-        plt.title(problem.name())
-        plt.legend(['archive normalization', 'nd normalization', 'nd and ideal search normalization'])
+        ss = 16
+
+        # bottom, top = ax.get_ylim()
+        # top = top + 0.02
+        # bottom =  bottom - 0.4
+        # ax.set_ylim(bottom, top)
+        ax.set_xlabel('evaluations', fontsize=ss)
+        ax.set_ylabel('hypervolume', fontsize=ss)
+        plt.title(problem.name(), fontsize=ss)
+        plt.legend(['Norm$R_A$', 'Norm$R_{ND}$', 'Norm$R_{NDE}$'], fontsize=ss)
 
         # save ---
         paths = os.getcwd()
@@ -203,8 +210,9 @@ def hvconverge_averageplot():
         savename2 = savefolder + '\\' + problem.name() + '_hvconverge.png'
         plt.savefig(savename1, format='eps')
         plt.savefig(savename2)
-        plt.pause(2)
+        plt.pause(5)
         plt.close()
+        break
 
     plt.ioff()
     # plt.fill_between(test_X.ravel(), test_y + uncertainty, test_y - uncertainty, alpha=0.5)
@@ -339,7 +347,7 @@ def hv_medianplot():
 
     :return: saved png and eps file in folder paper1_results\\ndplots\\prob_method_seed_*.eps/png
     (1) read the median seed
-    (2) read nd of this median seed
+    (2) read nd of train y median seed
     (3) plot and save
 
     '''
@@ -408,6 +416,95 @@ def hv_medianplot():
 
             plt.pause(2)
             plt.close()
+
+
+
+def hv_medianplot3in1():
+    '''
+    this function plot the final results of each problem
+
+    :return: saved png and eps file in folder paper1_results\\ndplots\\prob_method_seed_*.eps/png
+    (1) read the median seed
+    (2) read nd of train y median seed
+    (3) plot and save
+    *** change this line to deal with single problem : prob_id = 7
+
+    '''
+    import json
+
+    problems_json = 'p/resconvert.json'
+
+    # (1) load parameter settings
+    with open(problems_json, 'r') as data_file:
+        hyp = json.load(data_file)
+
+    target_problems = hyp['MO_target_problems']
+
+    num_pro = len(target_problems)
+    methods = ['normalization_with_self_0', 'normalization_with_nd_0', 'normalization_with_nd_1']
+    num_methods = len(methods)
+
+    path = os.getcwd()
+    pathsave = path + '\\paper1_results\\ndplots\\'
+    if not os.path.exists(pathsave):
+        os.mkdir(pathsave)
+
+    path_medianseed = os.getcwd() + '\\paper1_results\\paper1_resconvert\\median_id.joblib'
+    seedmedian = load(path_medianseed)
+
+
+    for prob_id in range(num_pro):
+        prob_id = 13
+
+        problem = target_problems[prob_id]
+        problem = eval(problem)
+
+        plt.ion()
+        fig, ax = plt.subplots()
+
+        pf = get_paretofront(problem, 1000)
+        ax.scatter(pf[:, 0], pf[:, 1], s=1, color='green')
+        edgecolors = ['red', 'black']
+
+        for id, method_selection in enumerate(methods):
+            seed = seedmedian[problem.name() + '_' + method_selection]
+
+
+            savefolder = path + '\\paper1_results\\' + problem.name() + '_' + method_selection
+            savename = savefolder + '\\trainy_seed_' + str(int(seed)) + '.csv'
+
+            # create nd from trainy,
+            trainy = np.loadtxt(savename, delimiter=',')
+            nd_front = get_ndfront(trainy)
+            # nd_front = np.loadtxt(savename, delimiter=',')
+            nd_front = np.atleast_2d(nd_front)
+            if id == 0:
+                ax.scatter(nd_front[:, 0], nd_front[:, 1], marker='X', c='black')
+            if id == 1:
+                ax.scatter(nd_front[:, 0], nd_front[:, 1], marker='D')
+            if id == 2:
+                ax.scatter(nd_front[:, 0], nd_front[:, 1], facecolors='white', edgecolors='red', alpha=1)
+
+        ss = 16
+        plt.title(problem.name(), fontsize=ss)
+        plt.legend(['PF', 'Norm$R_A$', 'Norm$R_{ND}$', 'Norm$R_{NDE}$'], fontsize=ss)
+        plt.xlabel('f1', fontsize=ss)
+        plt.ylabel('f2', fontsize=ss, rotation='horizontal')
+
+        #-----
+        paths = os.getcwd()
+        savefolder = paths + '\\paper1_results\\plots'
+        if not os.path.exists(savefolder):
+             os.mkdir(savefolder)
+
+        savename1 = savefolder + '\\' + problem.name()  + '_final.eps'
+        savename2 = savefolder + '\\' + problem.name() + '_final.png'
+        plt.savefig(savename1, format='eps')
+        plt.savefig(savename2)
+
+        plt.pause(5)
+        plt.close()
+        break
 
 def get_paretofront(problem, n):
     from pymop.factory import get_uniform_weights
@@ -728,4 +825,6 @@ if __name__ == "__main__":
     # hv_medianplot()
     # plot3dresults()
     # hvconverge_averageplot()
-    hv_medianplot()
+    # hv_medianplot()
+
+     hv_medianplot3in1()

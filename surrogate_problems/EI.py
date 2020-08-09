@@ -8,7 +8,7 @@ import pygmo as pg
 from scipy.stats import norm
 from sklearn.utils.validation import check_array
 
-from EI_problem import  ego_believer
+from EI_problem import  ego_believer, EIM_hv
 
 
 
@@ -38,7 +38,7 @@ class ego_fit(Problem):
         out["F"] = -fit
 
 
-class eim_fit(Problem):
+class ego_fiteim(Problem):
 
     def __init__(self, n_var, n_obj, n_constr, upper_bound, lower_bound, name):
         self.n_var = n_var
