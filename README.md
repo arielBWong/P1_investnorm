@@ -2,7 +2,7 @@
 ## Overview
 This is the original source code for paper 
 **Investigating normalization bounds for hypervolume-based infill criterion for expensive multiobjective optimization**
-appearing in Proceedings EMO2021 with unsorted other codes
+appearing in Proceedings EMO2021 
 
 Disclaimer:
 This code is provided for research use only. The authors do not have
