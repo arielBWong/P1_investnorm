@@ -21,7 +21,7 @@ para_run() launches 29 seeds for each problem/setting across 48 processes
 
 ## How to generate plots
 paper1_resconvert1.py
-upzip paper1_results for experimental results 
+upzip paper1_results_Aug8.7z for experimental results 
 (1) trainy_summary2csv is needed for creating intermediate data for plot
 
 (2) hv_medianplot3in1 for creating Figure(c), variable 'prob_id' for specifying which problem to plot
